@@ -1,7 +1,5 @@
-// Import Three.js module
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
 
-// Three.js Scene Setup for Hero Canvas
 function initHeroCanvas() {
     const canvas = document.getElementById('heroCanvas');
     if (!canvas) return;
@@ -10,23 +8,18 @@ function initHeroCanvas() {
     const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     
-    // Use clientWidth and clientHeight to set initial size
     renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setClearColor(0x000000, 0); // Transparent background
+    renderer.setClearColor(0x1a202c, 1);
     camera.position.z = 5;
 
-    // Create a stylized 3D scanner representation
     const group = new THREE.Group();
 
-    // Create main cube
     const geometry = new THREE.BoxGeometry(2, 2, 2);
     const edges = new THREE.EdgesGeometry(geometry);
     const lineMaterial = new THREE.LineBasicMaterial({ color: 0x4a90e2, linewidth: 2 });
     const cube = new THREE.LineSegments(edges, lineMaterial);
     group.add(cube);
 
-    // Add corner spheres
     const sphereGeometry = new THREE.SphereGeometry(0.15, 16, 16);
     const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x2d70b3 });
     
@@ -37,11 +30,10 @@ function initHeroCanvas() {
     
     corners.forEach(pos => {
         const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere.position.set(...pos);
+        sphere.position.set(pos[0], pos[1], pos[2]);
         group.add(sphere);
     });
 
-    // Add rotating inner geometry
     const innerGeometry = new THREE.TorusKnotGeometry(0.8, 0.2, 100, 16);
     const innerMaterial = new THREE.MeshBasicMaterial({ 
         color: 0x4a90e2,
@@ -52,7 +44,6 @@ function initHeroCanvas() {
 
     scene.add(group);
 
-    // Add lights
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambientLight);
 
@@ -60,7 +51,6 @@ function initHeroCanvas() {
     pointLight.position.set(5, 5, 5);
     scene.add(pointLight);
 
-    // Animation
     let animationId;
     function animate() {
         animationId = requestAnimationFrame(animate);
@@ -74,23 +64,23 @@ function initHeroCanvas() {
     }
     animate();
 
-    // Mark canvas as loaded
     canvas.classList.add('loaded');
 
-    // Handle window resize
     function handleResize() {
-        // Check if canvas is still in the DOM and has a size
-        if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
-            camera.aspect = canvas.clientWidth / canvas.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        if (!canvas.isConnected) {
+             cancelAnimationFrame(animationId);
+             return;
         }
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
     }
     
     window.addEventListener('resize', handleResize);
 
-    // Cleanup logic (optional, but good practice)
-    // You can return a cleanup function if you need to destroy this scene later
     return () => {
         window.removeEventListener('resize', handleResize);
         cancelAnimationFrame(animationId);
@@ -98,294 +88,423 @@ function initHeroCanvas() {
     };
 }
 
-// Three.js Scene Setup for Demo Canvas (Interactive)
-// THIS IS THE LOGIC FROM YOUR main.js, WRAPPED IN THE initDemoCanvas FUNCTION
-function initDemoCanvas() {
+async function initDemoCanvas() {
+    const canvas = document.getElementById('demoCanvas');
+    if (!canvas) return;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     
-    // --- Canvas and Renderer Setup ---
-    // Get the canvas from the HTML
-    const canvas = document.getElementById('demoCanvas'); // <-- CHANGED from shapeCanvas
-    if (canvas) {
-        // setting up scene
-        const scene = new THREE.Scene();
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    renderer.setClearColor(0x1a202c, 1);
+    camera.position.z = 40;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    directionalLight.position.set(5, 10, 7.5);
+    scene.add(directionalLight);
+
+    let clusteredLevels;
+    try {
+        const response = await fetch('./Examples/sensor_data.json'); 
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const rawLevels = await response.json();
+        const levels = rawLevels.map(level => 
+            level.map(p => new THREE.Vector3(p.x, p.y, p.z))
+        );
         
-        // setting up camera
-        const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-        camera.position.z = 8; // Set camera position matching repo demo
-
-        //setting up renderer
-        const renderer = new THREE.WebGLRenderer({ 
-            canvas, // Render to our specific canvas
-            antialias: true,
-            alpha: true // Allow transparency
-        });
-        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-        renderer.setPixelRatio(window.devicePixelRatio); // For sharp rendering
-        renderer.setClearColor(0x000000, 0); // Transparent background
-
-        // --- Star Shape Geometry (From your original script) ---
-        /**
-         * Helper function to generate a 10-point star level.
-         */
-        function createStarLevel(rOuter, rInner, z) {
-            const points = [];
-            const numPoints = 10; // 5 points, 5 crevices
-            for (let i = 0; i < numPoints; i++) {
-                const r = (i % 2 === 0) ? rOuter : rInner;
-                const angle = (i / numPoints) * 2 * Math.PI - (Math.PI / 2);
-                const x = r * Math.cos(angle);
-                const y = r * Math.sin(angle);
-                points.push(new THREE.Vector3(x, y, z));
-            }
-            return points;
-        }
-
-        const levels = [
-            // Level 0 (z = 0) - Small Star
-            createStarLevel(2, 1, 0),
-            // Level 1 (z = 1) - Small Star
-            createStarLevel(2, 1, 1),
-            // Level 2 (z = 2) - Large Star
-            createStarLevel(4, 2, 2),
-            // Level 3 (z = 3) - Large Star
-            createStarLevel(4, 2, 3)
-        ];
-
-        /**
-         * Triangulates a 2D polygon using the Ear Clipping algorithm.
-         */
-        function triangulatePolygon(points) {
-            const indices = points.map((_, i) => i);
-            const triangles = [];
-
-            function area(p1, p2, p3) {
-                return (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x);
-            }
-
-            function isInside(a, b, c, p) {
-                const s = a.y * c.x - a.x * c.y + (c.y - a.y) * p.x + (a.x - c.x) * p.y;
-                const t = a.x * b.y - a.y * b.x + (a.y - b.y) * p.x + (b.x - a.x) * p.y;
-                if ((s < 0) != (t < 0) && s != 0 && t != 0) return false;
-                const A = -b.y * c.x + a.y * (c.x - b.x) + a.x * (b.y - c.y) + b.x * c.y;
-                if (A < 0) return (s <= 0 && s + t >= A);
-                return (s >= 0 && s + t <= A);
-            }
-
-            let remainingIndices = [...indices];
-            let safety = 1000; 
-
-            while (remainingIndices.length > 3 && safety-- > 0) {
-                let isEarFound = false;
-                for (let i = 0; i < remainingIndices.length; i++) {
-                    const i_prev = (i + remainingIndices.length - 1) % remainingIndices.length;
-                    const i_next = (i + 1) % remainingIndices.length;
-                    const a_idx = remainingIndices[i_prev];
-                    const b_idx = remainingIndices[i];
-                    const c_idx = remainingIndices[i_next];
-                    const a = points[a_idx];
-                    const b = points[b_idx];
-                    const c = points[c_idx];
-
-                    if (area(a, b, c) < 0) continue; 
-                    let isEar = true;
-                    for (let j = 0; j < remainingIndices.length; j++) {
-                        if (j === i_prev || j === i || j === i_next) continue;
-                        if (isInside(a, b, c, points[remainingIndices[j]])) {
-                            isEar = false;
-                            break;
-                        }
-                    }
-                    if (isEar) {
-                        triangles.push(a_idx, b_idx, c_idx);
-                        remainingIndices.splice(i, 1);
-                        isEarFound = true;
-                        break;
-                    }
-                }
-                if (!isEarFound) {
-                     console.warn("Ear clipping failed to find an ear.");
-                     break;
-                }
-            }
-            if (remainingIndices.length === 3) {
-                triangles.push(remainingIndices[0], remainingIndices[1], remainingIndices[2]);
-            }
-            return triangles;
-        }
-
-        /**
-         * Builds the complete geometry from an array of levels.
-         */
-        function buildConnections(levels) {
-            const allVertices = [];
-            const indices = [];
-            for (const level of levels) {
-                for (const point of level) {
-                    allVertices.push(point.x, point.y, point.z);
-                }
-            }
-            let levelA_offset = 0;
-            for (let i = 0; i < levels.length - 1; i++) {
-                const levelA = levels[i];
-                const levelB = levels[i + 1];
-                const levelB_offset = levelA_offset + levelA.length;
-                if (levelA.length !== levelB.length) {
-                    console.warn(`Level ${i} and ${i+1} have different vertex counts. Skipping side connection.`);
-                    levelA_offset = levelB_offset;
-                    continue;
-                }
-                const pointsPerLevel = levelA.length;
-                for (let j = 0; j < pointsPerLevel; j++) {
-                    let next_j = (j + 1) % pointsPerLevel;
-                    let a = levelA_offset + j;
-                    let b = levelA_offset + next_j;
-                    let c = levelB_offset + j;
-                    let d = levelB_offset + next_j;
-                    indices.push(a, b, d);
-                    indices.push(a, d, c);
-                }
-                levelA_offset = levelB_offset;
-            }
-            const bottomLevel = levels[0];
-            const bottomPoints2D = bottomLevel.map(v => ({ x: v.x, y: v.y }));
-            const bottomIndices = triangulatePolygon(bottomPoints2D);
-            indices.push(...bottomIndices);
-            const topLevel = levels[levels.length - 1];
-            const topLevelOffset = allVertices.length / 3 - topLevel.length;
-            const topPoints2D = topLevel.map(v => ({ x: v.x, y: v.y }));
-            const topIndices = triangulatePolygon(topPoints2D);
-            for (let k = 0; k < topIndices.length; k += 3) {
-                indices.push(
-                    topIndices[k] + topLevelOffset,
-                    topIndices[k + 2] + topLevelOffset,
-                    topIndices[k + 1] + topLevelOffset
-                );
-            }
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(allVertices, 3));
-            geometry.setIndex(indices);
-            geometry.computeVertexNormals();
-            return geometry;
-        }
-
-        // --- Create the Mesh ---
-        const geometry = buildConnections(levels);
-        const material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
-        const shape = new THREE.Mesh(geometry, material);
-        scene.add(shape);
-
-        // --- Lights (from repo demo) ---
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(5, 5, 5);
-        scene.add(directionalLight);
-
-        // --- NEW CONTROLS (from repo's JS/index.js) ---
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let rotation = { x: 0.5, y: 0.5 }; // Start with a slight tilt
-        let targetRotation = { x: 0.5, y: 0.5 };
-        let autoRotate = true;
-
-        canvas.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            autoRotate = false;
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                const deltaX = e.clientX - previousMousePosition.x;
-                const deltaY = e.clientY - previousMousePosition.y;
-                targetRotation.y += deltaX * 0.01;
-                targetRotation.x += deltaY * 0.01;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            }
-        });
-
-        canvas.addEventListener('mouseup', () => isDragging = false);
-        canvas.addEventListener('mouseleave', () => isDragging = false);
-
-        // Touch events
-        canvas.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                e.preventDefault(); // Prevent page scroll on canvas
-                isDragging = true;
-                autoRotate = false;
-                const touch = e.touches[0];
-                previousMousePosition = { x: touch.clientX, y: touch.clientY };
-            }
-        });
-
-        canvas.addEventListener('touchmove', (e) => {
-            if (isDragging && e.touches.length === 1) {
-                e.preventDefault(); // Prevent page scroll
-                const touch = e.touches[0];
-                const deltaX = touch.clientX - previousMousePosition.x;
-                const deltaY = touch.clientY - previousMousePosition.y;
-                targetRotation.y += deltaX * 0.01;
-                targetRotation.x += deltaY * 0.01;
-                previousMousePosition = { x: touch.clientX, y: touch.clientY };
-            }
-        });
-
-        canvas.addEventListener('touchend', () => isDragging = false);
-
-        // Mouse wheel zoom
-        canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            camera.position.z += e.deltaY * 0.01;
-            // Clamp zoom
-            camera.position.z = Math.max(4, Math.min(20, camera.position.z));
-        });
-
-        // --- NEW Resize Handler (from repo) ---
-        window.addEventListener('resize', () => {
-             if (canvas.clientWidth > 0 && canvas.clientHeight > 0) {
-                camera.aspect = canvas.clientWidth / canvas.clientHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-            }
-        });
-
-        // --- NEW Animate Loop (from repo) ---
-        function animate() {
-            requestAnimationFrame(animate);
-            
-            if (autoRotate && !isDragging) {
-                targetRotation.y += 0.002;
-            }
-            
-            // Smooth rotation interpolation (lerp)
-            rotation.x += (targetRotation.x - rotation.x) * 0.1;
-            rotation.y += (targetRotation.y - rotation.y) * 0.1;
-            
-            // Apply rotation to the star shape
-            shape.rotation.x = rotation.x;
-            shape.rotation.y = rotation.y;
-            
-            renderer.render(scene, camera);
-        }
-        
-        // Start the animation
-        animate();
-
-        // Mark canvas as loaded (for the spinner)
-        canvas.classList.add('loaded');
-
-    } else {
-        console.error('Canvas with ID "demoCanvas" not found.');
+        const gapThresholdSq = calculateGapThreshold(levels);
+        clusteredLevels = levels.map(level => clusterLevelByGaps(level, gapThresholdSq));
+    } catch (error) {
+        console.error("Error loading sensor data:", error);
+        return;
     }
+
+    const geometry = buildConnections(clusteredLevels);
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x00b0ff,
+        roughness: 0.5,
+        metalness: 0.1,
+        side: THREE.DoubleSide,
+    });
+
+    const model = new THREE.Mesh(geometry, material);
+    scene.add(model);
+    
+    const box = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    model.position.sub(center);
+    camera.position.z = Math.max(size.x, size.y, size.z) * 1.5;
+    camera.lookAt(0, 0, 0);
+
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let rotation = { x: 0, y: 0 };
+    let targetRotation = { x: 0, y: 0.005 };
+    let autoRotate = true;
+
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        autoRotate = false;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            const deltaX = e.clientX - previousMousePosition.x;
+            const deltaY = e.clientY - previousMousePosition.y;
+            
+            targetRotation.y += deltaX * 0.01;
+            targetRotation.x += deltaY * 0.01;
+            
+            previousMousePosition = { x: e.clientX, y: e.clientY };
+        }
+    });
+
+    canvas.addEventListener('mouseup', () => { isDragging = false; });
+    canvas.addEventListener('mouseleave', () => { isDragging = false; });
+
+    canvas.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        autoRotate = false;
+        const touch = e.touches[0];
+        previousMousePosition = { x: touch.clientX, y: touch.clientY };
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - previousMousePosition.x;
+            const deltaY = touch.clientY - previousMousePosition.y;
+            
+            targetRotation.y += deltaX * 0.01;
+            targetRotation.x += deltaY * 0.01;
+            
+            previousMousePosition = { x: touch.clientX, y: touch.clientY };
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => { isDragging = false; });
+
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        camera.position.z += e.deltaY * 0.02;
+        const minZ = Math.max(size.x, size.y, size.z) * 0.5;
+        const maxZ = Math.max(size.x, size.y, size.z) * 5;
+        camera.position.z = Math.max(minZ, Math.min(maxZ, camera.position.z));
+    }, { passive: false });
+
+    let animationId;
+    function animate() {
+        animationId = requestAnimationFrame(animate);
+        
+        if (autoRotate && !isDragging) {
+            targetRotation.y += 0.005;
+        }
+        
+        rotation.x += (targetRotation.x - rotation.x) * 0.1;
+        rotation.y += (targetRotation.y - rotation.y) * 0.1;
+        
+        model.rotation.x = rotation.x;
+        model.rotation.y = rotation.y;
+        
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    canvas.classList.add('loaded');
+
+    function handleResize() {
+        if (!canvas.isConnected) {
+             cancelAnimationFrame(animationId);
+             return;
+        }
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(width, height);
+    }
+    
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        cancelAnimationFrame(animationId);
+        renderer.dispose();
+    };
 }
 
-// Initialize when DOM is loaded
+function calculateGapThreshold(levels) {
+    if (levels.length === 0 || levels[0].length === 0) return 100;
+    
+    const numPoints = levels[0].length;
+    const angularStep = (2 * Math.PI) / numPoints;
+    
+    let maxRadius = 0;
+    for (const level of levels.slice(0, 10)) {
+         if (!level) continue;
+        for (const p of level) {
+             if (!p) continue;
+            const r = Math.sqrt(p.x * p.x + p.y * p.y);
+            if (r > maxRadius) maxRadius = r;
+        }
+    }
+    
+    const maxArcLength = maxRadius * angularStep;
+    return Math.pow(maxArcLength * 100, 2);
+}
+
+function clusterLevelByGaps(level, thresholdSq) {
+    const contours = [];
+    let currentContour = [];
+    const numPoints = level.length;
+    
+    for (let i = 0; i < numPoints; i++) {
+        const p1 = level[i];
+        const p2 = level[(i + 1) % numPoints];
+        
+        if (p1.x !== 0 || p1.y !== 0) {
+            currentContour.push(p1);
+        }
+        
+        const isMiss = (p2.x === 0 && p2.y === 0);
+        let isGap = false;
+        if ((p1.x !== 0 || p1.y !== 0) && (p2.x !== 0 || p2.y !== 0)) {
+            isGap = p1.distanceToSquared(p2) > thresholdSq;
+        }
+        
+        if ((isMiss || isGap) && currentContour.length > 0) {
+            if (currentContour.length > 2) {
+                contours.push(currentContour);
+            }
+            currentContour = [];
+        }
+    }
+    
+    if (currentContour.length > 0) {
+        if (contours.length > 0) {
+            const firstContour = contours[0];
+            const lastPoint = currentContour[currentContour.length - 1];
+            const firstPoint = firstContour[0];
+            
+            if (lastPoint.distanceToSquared(firstPoint) <= thresholdSq) {
+                contours[0] = [...currentContour, ...firstContour];
+            } else if (currentContour.length > 2) {
+                contours.push(currentContour);
+            }
+        } else if (currentContour.length > 2) {
+            contours.push(currentContour);
+        }
+    }
+    
+    return contours;
+}
+
+function getContourCentroid(contour) {
+    let x = 0;
+    let y = 0;
+    for (const p of contour) {
+        x += p.x;
+        y += p.y;
+    }
+    return new THREE.Vector2(x / contour.length, y / contour.length);
+}
+
+function buildConnections(clusteredLevels) {
+    const geometry = new THREE.BufferGeometry();
+    const vertices = [];
+    const indices = [];
+    let vertexIndex = 0;
+
+    for (let i = 0; i < clusteredLevels.length - 1; i++) {
+        const currentContours = clusteredLevels[i];
+        const nextContours = clusteredLevels[i+1];
+
+        if (nextContours.length === 0) continue;
+
+        for (const contourA of currentContours) {
+            const centroidA = getContourCentroid(contourA);
+            let closestContourB = null;
+            let minCentroidDistSq = Infinity;
+
+            for (const contourB of nextContours) {
+                const centroidB = getContourCentroid(contourB);
+                const distSq = centroidA.distanceToSquared(centroidB);
+                if (distSq < minCentroidDistSq) {
+                    minCentroidDistSq = distSq;
+                    closestContourB = contourB;
+                }
+            }
+
+            if (closestContourB) {
+                vertexIndex = stitchContours(vertices, indices, contourA, closestContourB, vertexIndex);
+            }
+        }
+    }
+
+    if (clusteredLevels.length > 0) {
+        const bottomContours = clusteredLevels[0];
+        for (const contour of bottomContours) {
+            const capIndices = fanTriangulation(contour);
+            const offset = vertexIndex;
+            for (const p of contour) {
+                vertices.push(p.x, p.y, p.z);
+            }
+            for (const idx of capIndices) {
+                indices.push(idx + offset);
+            }
+            vertexIndex += contour.length;
+        }
+
+        const topContours = clusteredLevels[clusteredLevels.length - 1];
+        for (const contour of topContours) {
+            const capIndices = fanTriangulation(contour);
+            const offset = vertexIndex;
+            for (const p of contour) {
+                vertices.push(p.x, p.y, p.z);
+            }
+            for (let i = capIndices.length - 3; i >= 0; i -= 3) {
+                indices.push(capIndices[i] + offset);
+                indices.push(capIndices[i + 2] + offset);
+                indices.push(capIndices[i + 1] + offset);
+            }
+            vertexIndex += contour.length;
+        }
+    }
+
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    
+    return geometry;
+}
+
+function stitchContours(vertices, indices, contourA, contourB, vertexIndex) {
+    const numPointsA = contourA.length;
+    const numPointsB = contourB.length;
+    
+    if (numPointsA < 2 || numPointsB < 2) return vertexIndex;
+    
+    const indicesA = [];
+    for (const p of contourA) {
+        indicesA.push(vertexIndex);
+        vertices.push(p.x, p.y, p.z);
+        vertexIndex++;
+    }
+    
+    const indicesB = [];
+    for (const p of contourB) {
+        indicesB.push(vertexIndex);
+        vertices.push(p.x, p.y, p.z);
+        vertexIndex++;
+    }
+
+    let bestB_idx = 0;
+    let minStartDistSq = Infinity;
+    for (let j = 0; j < numPointsB; j++) {
+        const distSq = contourA[0].distanceToSquared(contourB[j]);
+        if (distSq < minStartDistSq) {
+            minStartDistSq = distSq;
+            bestB_idx = j;
+        }
+    }
+
+    let i = 0;
+    let j = bestB_idx;
+    let stepsA = 0;
+    let stepsB = 0;
+    
+    while (stepsA < numPointsA || stepsB < numPointsB) {
+        if (stepsA >= numPointsA) {
+            const fan_A_idx = indicesA[(i - 1 + numPointsA) % numPointsA];
+            const pB1_idx = indicesB[j % numPointsB];
+            const pB2_idx = indicesB[(j + 1) % numPointsB];
+            
+            indices.push(fan_A_idx, pB1_idx, pB2_idx);
+            j = (j + 1) % numPointsB;
+            stepsB++;
+            continue;
+        }
+        
+        if (stepsB >= numPointsB) {
+            const fan_B_idx = indicesB[(j - 1 + numPointsB) % numPointsB];
+            const pA1_idx = indicesA[i % numPointsA];
+            const pA2_idx = indicesA[(i + 1) % numPointsA];
+            
+            indices.push(pA1_idx, fan_B_idx, pA2_idx);
+            i = (i + 1) % numPointsA;
+            stepsA++;
+            continue;
+        }
+
+        const pA1_idx = indicesA[i % numPointsA];
+        const pA2_idx = indicesA[(i + 1) % numPointsA];
+        const pB1_idx = indicesB[j % numPointsB];
+        const pB2_idx = indicesB[(j + 1) % numPointsB];
+        
+        const pA1 = contourA[i % numPointsA];
+        const pA2 = contourA[(i + 1) % numPointsA];
+        const pB1 = contourB[j % numPointsB];
+        const pB2 = contourB[(j + 1) % numPointsB];
+
+        const d1 = pA1.distanceToSquared(pB2);
+        const d2 = pA2.distanceToSquared(pB1);
+
+        const remainingA = numPointsA - stepsA;
+        const remainingB = numPointsB - stepsB;
+
+        if (remainingA > remainingB) {
+            indices.push(pA1_idx, pB1_idx, pA2_idx);
+            i = (i + 1) % numPointsA;
+            stepsA++;
+        } else if (remainingB > remainingA) {
+            indices.push(pA1_idx, pB1_idx, pB2_idx);
+            j = (j + 1) % numPointsB;
+            stepsB++;
+        } else {
+            if (d1 < d2) {
+                indices.push(pA1_idx, pB1_idx, pB2_idx);
+                indices.push(pA1_idx, pB2_idx, pA2_idx);
+            } else {
+                indices.push(pA1_idx, pB1_idx, pA2_idx);
+                indices.push(pA2_idx, pB1_idx, pB2_idx);
+            }
+            i = (i + 1) % numPointsA;
+            j = (j + 1) % numPointsB;
+            stepsA++;
+            stepsB++;
+        }
+    }
+
+    return vertexIndex;
+}
+
+function fanTriangulation(points) {
+    const indices = [];
+    if (points.length < 3) return indices;
+
+    const rootIndex = 0;
+    for (let i = 1; i < points.length - 1; i++) {
+        indices.push(rootIndex);
+        indices.push(i);
+        indices.push(i + 1);
+    }
+    return indices;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize both 3D canvases
     initHeroCanvas();
     initDemoCanvas();
     
-    // Smooth scroll for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
             e.preventDefault();
@@ -399,7 +518,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Video play on scroll
     const demoVideo = document.getElementById('demoVideo');
     if (demoVideo) {
         const observerOptions = {
@@ -411,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const videoObserver = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    demoVideo.play().catch(e => console.error("Video play failed:", e));
+                    demoVideo.play();
                 } else {
                     demoVideo.pause();
                 }
@@ -421,17 +539,14 @@ document.addEventListener('DOMContentLoaded', () => {
         videoObserver.observe(demoVideo);
     }
 
-    // Animate elements on scroll
     const animateOnScroll = () => {
-        // Select elements to animate
-        const elements = document.querySelectorAll('.feature-card, .card, .hero-title, .hero-subtitle, .feature-list li');
+        const elements = document.querySelectorAll('.feature-card, .card');
         
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.style.opacity = '1';
                     entry.target.style.transform = 'translateY(0)';
-                    observer.unobserve(entry.target); // Stop observing once animated
                 }
             });
         }, {
@@ -441,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.forEach(el => {
             el.style.opacity = '0';
             el.style.transform = 'translateY(30px)';
-            el.style.transition = 'opacity 0.6s ease-out, transform 0.6s ease-out';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
             observer.observe(el);
         });
     };
