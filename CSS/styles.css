@@ -1,0 +1,324 @@
+/* ========================================= */
+/* ===== 1. DESIGN SYSTEM VARIABLES (GLOBAL) ===== */
+/* ========================================= */
+:root {
+  /* Color Palette - Consolidated all unique colors */
+  --desmos-blue: #2d70b3;
+  --desmos-dark-blue: #1a5bb8;
+  --desmos-light-blue: #4a90e2;
+  --desmos-gray: #6b7280;
+  --desmos-light-gray: #f8fafc;
+  --desmos-success: #28a745;
+  --desmos-success-dark: #1e7e34;
+  --desmos-danger: #ef4444;
+  --desmos-warning: #f59e0b;
+  
+  /* Semantic Colors */
+  --color-primary: var(--desmos-blue);
+  --color-primary-dark: var(--desmos-dark-blue);
+  --color-primary-light: var(--desmos-light-blue);
+  --color-text-primary: #1f2937;
+  --color-text-secondary: var(--desmos-gray);
+  --color-surface: #ffffff;
+  --color-border: #e5e7eb;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--desmos-blue), var(--desmos-light-blue));
+  --gradient-primary-hover: linear-gradient(135deg, var(--desmos-dark-blue), var(--desmos-blue));
+  --gradient-background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  --gradient-navbar: linear-gradient(135deg, var(--desmos-dark-blue) 0%, var(--desmos-blue) 100%);
+  
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  --font-size-base: 1rem;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Spacing */
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  
+  /* Component Props */
+  --radius-md: 8px;
+  --radius-xl: 16px;
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.15);
+  --transition-base: 0.3s ease;
+  --transition-slow: 0.6s ease;
+  
+  /* Breakpoints (Mobile-First Reference) */
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+}
+
+/* ========================================= */
+/* ===== 2. BASE STYLES (MOBILE-FIRST) ===== */
+/* ========================================= */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  /* Essential full-height and margin reset */
+  height: 100%;
+  margin: 0;
+  font-family: var(--font-family);
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+body {
+  /* Mobile-first full-page background and sticky footer prep */
+  display: flex;
+  flex-direction: column;
+  background: var(--gradient-background);
+  min-height: 100vh;
+}
+
+/* Typography (Mobile Default) */
+h1, h2, h3, h4 {
+  color: var(--desmos-dark-blue);
+  font-weight: var(--font-weight-bold);
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+}
+
+p {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: var(--transition-base);
+}
+
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+/* Main Content Container (Mobile Default Padding) */
+.container-fluid.flex-grow-1,
+.container {
+    padding: var(--spacing-lg) var(--spacing-md); /* Mobile padding: 1.5rem T/B, 1rem L/R */
+    flex-grow: 1;
+}
+
+/* Reusable Section Header */
+.section-header {
+    color: var(--desmos-dark-blue);
+    font-weight: var(--font-weight-bold);
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--desmos-blue);
+    display: block; /* Full width on mobile */
+    text-align: center;
+}
+
+/* ========================================= */
+/* ===== 3. COMPONENTS (GLOBAL) ===== */
+/* ========================================= */
+
+/* Navbar (from all page files) */
+.navbar {
+  background: linear-gradient(135deg, var(--desmos-dark-blue) 0%, var(--desmos-blue) 100%) !important;
+  box-shadow: 0 4px 20px rgba(45, 112, 179, 0.15);
+  padding: 0.75rem 0;
+  backdrop-filter: blur(20px);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: white !important;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  transition: var(--transition-base);
+}
+
+.navbar-brand img,
+.logo-img {
+  max-height: 2.5rem;
+  height: auto;
+  width: auto;
+  transition: var(--transition-base);
+}
+
+.navbar-brand:hover img {
+  transform: scale(1.05);
+}
+
+.nav-link {
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85) !important;
+  transition: all 0.3s ease;
+  padding: 0.5rem 1rem !important;
+  border-radius: 6px;
+  margin: 0 0.25rem;
+}
+
+.nav-link:hover {
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Cards (from all page files) */
+.card {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-lg);
+  transition: var(--transition-base);
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  animation: fadeInUp var(--transition-slow) ease-out;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-2px); 
+  border-color: var(--color-primary-light);
+}
+
+.card-body {
+    padding: var(--spacing-lg);
+}
+
+.card-title {
+    font-size: 1.125rem;
+    font-weight: var(--font-weight-semibold);
+    color: var(--desmos-dark-blue);
+    margin-bottom: var(--spacing-sm);
+}
+
+.card-text {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+}
+
+/* Buttons (from all page files) */
+.btn {
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  transition: var(--transition-base);
+  position: relative;
+  overflow: hidden;
+  border: none;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left var(--transition-slow);
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: white;
+  box-shadow: 0 6px 20px rgba(45, 112, 179, 0.3);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+  background: var(--gradient-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(45, 112, 179, 0.4);
+  color: white;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--desmos-success), #10b981);
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, var(--desmos-success-dark), var(--desmos-success));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+
+/* Form Controls (from about.css, gallery.css, login.css) */
+.form-label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--desmos-dark-blue);
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.95rem;
+}
+
+.form-control, 
+.form-select {
+  background-color: var(--desmos-light-gray);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  transition: var(--transition-base);
+}
+
+.form-control:focus, 
+.form-select:focus {
+  border-color: var(--desmos-blue);
+  box-shadow: 0 0 0 3px rgba(45, 112, 179, 0.1);
+  outline: none;
+  background-color: var(--color-surface);
+}
+
+/* Animations (Consolidated) */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ========================================= */
+/* ===== 4. MEDIA QUERIES (DESKTOP) ===== */
+/* ========================================= */
+
+/* Tablet and up (min-width: 768px) */
+@media (min-width: 768px) {
+  /* Desktop padding for main containers */
+  .container-fluid.flex-grow-1,
+  .container {
+    padding: var(--spacing-xl); /* 2rem padding */
+  }
+
+  /* Section header enhancements */
+  .section-header {
+    font-size: 2rem;
+    margin-bottom: var(--spacing-xl);
+    display: inline-block;
+    text-align: left;
+    padding-bottom: 0.75rem;
+    border-bottom-width: 3px;
+  }
+}

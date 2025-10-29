@@ -1,0 +1,91 @@
+/* History page unique styles - Mobile First */
+
+.timeline {
+    position: relative;
+    padding-left: var(--spacing-lg); /* Space for the line */
+    margin-top: var(--spacing-md);
+}
+
+/* Vertical line for the timeline */
+.timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    background-color: var(--color-border);
+    height: 100%;
+    border-radius: 2px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: var(--spacing-xl);
+    padding-left: var(--spacing-lg); /* Spacing from the line */
+    animation: fadeInUp var(--transition-slow) ease-out;
+}
+
+/* Timeline dot (the marker) */
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    top: 0.25rem;
+    left: -12px;
+    width: 20px;
+    height: 20px;
+    background-color: var(--desmos-blue);
+    border: 4px solid var(--desmos-light-gray);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px var(--desmos-blue);
+}
+
+.history-header {
+    font-size: 1.125rem;
+    font-weight: var(--font-weight-semibold);
+    color: var(--desmos-dark-blue);
+    margin-bottom: var(--spacing-sm);
+}
+
+.history-date {
+    font-size: 0.875rem;
+    color: var(--desmos-gray);
+    display: block;
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Desktop Enhancement: Centered Timeline (More complex but cleaner look) */
+@media (min-width: 992px) {
+    .timeline {
+        padding-left: 0;
+        max-width: 800px;
+        margin: var(--spacing-xl) auto;
+    }
+
+    .timeline::before {
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .timeline-item {
+        width: 50%;
+        padding-left: 0;
+        padding-right: var(--spacing-xl);
+    }
+    
+    .timeline-item:nth-child(even) {
+        margin-left: 50%;
+        padding-left: var(--spacing-xl);
+        padding-right: 0;
+        text-align: right;
+    }
+
+    .timeline-item:nth-child(even)::before {
+        left: auto;
+        right: -12px;
+    }
+
+    .timeline-item:nth-child(odd)::before {
+        left: auto;
+        right: -12px;
+    }
+}

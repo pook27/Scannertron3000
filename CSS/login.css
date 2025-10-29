@@ -1,0 +1,33 @@
+/* Login page unique styles, leveraging global styles from styles.css */
+.login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl) var(--spacing-md);
+}
+
+/* Login Card (unique wrapper class, uses global .card styles) */
+.login-card-width {
+  width: 100%;
+  max-width: 420px;
+}
+
+.card-login {
+  /* Applying specific overrides */
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-xl);
+}
+
+/* Enhanced links (unique to the login/auth flow) */
+.text-primary {
+  color: var(--desmos-blue) !important;
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: var(--transition-base);
+}
+
+.text-primary:hover {
+  color: var(--desmos-dark-blue) !important;
+  transform: translateY(-1px);
+}
