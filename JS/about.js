@@ -1,5 +1,3 @@
-// JS/about.js (Updated)
-
 import { auth, onAuthStateChanged, signOut, database, ref, push } from './firebase.js';
 
 function setupFeedbackForm(user) {
@@ -9,7 +7,7 @@ function setupFeedbackForm(user) {
         feedbackForm.addEventListener('submit', (event) => {
             event.preventDefault(); 
 
-            // Helper to get selected radio button value
+            // Helper functions to get form data
             const getRadioValue = (name) => {
                 const radios = document.getElementsByName(name);
                 for (const radio of radios) {
@@ -18,12 +16,11 @@ function setupFeedbackForm(user) {
                 return null;
             };
 
-            // Helper to get checked checkbox values
             const getCheckboxValues = (idPrefix) => {
                 const checkboxes = document.querySelectorAll(`input[id^="${idPrefix}"]:checked`);
                 return Array.from(checkboxes).map(cb => cb.value);
             };
-
+            
             // Collect all form data into a JSON object
             const feedbackData = {
                 timestamp: new Date().toISOString(),
@@ -37,25 +34,29 @@ function setupFeedbackForm(user) {
                 app_version: '3.0.0' 
             };
 
-            // Requirement: console.log a JSON with the output
-            console.log('--- FEEDBACK DATA SUBMITTED ---');
+            // --- JSON CHECKPOINT ---
+            // Log the JSON object to the console for verification
+            console.log('--- FEEDBACK JSON CHECKPOINT ---');
+            console.log('Verify this object structure before pushing to Firebase:');
             console.log(JSON.stringify(feedbackData, null, 2));
+            // --- END CHECKPOINT ---
 
             // Optional: Send to Firebase Realtime Database
             push(ref(database, 'feedback'), feedbackData)
                 .then(() => {
-                    alert('Feedback sent successfully! Check the console for the logged JSON data.');
+                    alert('Feedback captured and sent! Check the console for the logged JSON data.');
                     feedbackForm.reset();
                 })
                 .catch((error) => {
-                    console.error("Failed to send feedback to Firebase:", error);
-                    alert('Feedback captured locally, but failed to send to server.');
+                    console.error("Firebase Push Failed (Still logged the JSON):", error);
+                    alert('Data logged but Firebase push failed.');
                 });
         });
     }
 }
 
 onAuthStateChanged(auth, (user) => {
+    // ... (rest of the authentication and setup logic remains the same)
     if (user) {
         setupFeedbackForm(user);
         
