@@ -4,11 +4,7 @@ import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase
 import { getDatabase, ref, push, set, get, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js';
 
-// **FIXED IMPORT METHOD:** Import all exports from the config file as a single object.
-import * as configModule from './firebase-config.js'; 
-
-// Access the firebaseConfig object from the imported module
-const firebaseConfig = configModule.firebaseConfig;
+import { firebaseConfig } from './firebase-config.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -45,3 +41,5 @@ export {
   onAuthStateChanged,
   signOut
 };
+
+console.log("Firebase initialized:", database);
