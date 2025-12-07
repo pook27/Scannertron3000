@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="CSS/model.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
     <script src="JS/model.js" type="module"></script>
+    <script src="JS/navbar-auth.js" type="module"></script>
+    <link rel="icon" type="image/webp" href="/Images/logo.webp">
 </head>
 
 <body class="bg-light d-flex flex-column min-vh-100">
@@ -32,7 +34,7 @@
                     <li class="nav-item"><a class="nav-link" href="profile.html"><i class="fas fa-user me-1"></i>Profile</a></li>
                     <li class="nav-item"><a class="nav-link" href="gallery.html"><i class="fas fa-images me-1"></i>Gallery</a></li>
                     <li class="nav-item"><a class="nav-link" href="about.html"><i class="fas fa-info-circle me-1"></i>About</a></li>
-                    <li class="nav-item"><a class="nav-link" href="login.html"><i class="fas fa-sign-in-alt me-1"></i>Sign in</a></li>
+                    <li class="nav-item"><a class="nav-link" href="login.html" id="login-btn"><i class="fas fa-sign-in-alt me-1"></i>Log Out</a></li>
                 </ul>
             </div>
         </div>
@@ -52,21 +54,28 @@
             <!-- Sidebar column -->
             <div class="col-lg-3 col-12 mt-3 mt-lg-0 d-flex flex-column">
                 <div class="card shadow-sm p-3 flex-shrink-0">
-                    <button class="btn btn-primary w-100 mb-3">
-                        <i class="fas fa-play"></i> Start Scan
+                    
+                    <button id="startScanButton" class="btn btn-primary w-100 mb-3">
+                        <i class="fas fa-play me-2"></i>Start Scan
                     </button>
-                    <button class="btn btn-success w-100 mb-3">
-                        <i class="fas fa-download"></i> Download Model
+                    
+                    <button id="downloadModelButton" class="btn btn-success w-100 mb-3">
+                        <i class="fas fa-download me-2"></i>Download Model
                     </button>
+
+                    <div class="alert alert-info mt-3" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>Click "Start Scan" to begin. The ESP32 will rotate and capture the object.</small>
+                    </div>
                 </div>
             </div>
 
         </div>
     </div>
 
-</body>
     <script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-auth-compat.js"></script>
     <script src="/js/firebase-config.js" type="module"></script>
+</body>
 </html>

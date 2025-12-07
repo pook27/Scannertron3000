@@ -6,7 +6,7 @@ import json
 # Set these to match your theoretical sensor
 NUM_LEVELS = 200  # How many "rings" to scan
 POINTS_PER_RING = 100  # How many sensor "pings" per 360-degree spin
-MODEL_FILE = 'uploads_files_2023543_barrel.stl'  # Change this to '3DBenchy.stl' or your model
+MODEL_FILE = '3DBenchy.stl'  # Change this to '3DBenchy.stl' or your model
 # FIX: Output file is now a .json file
 OUTPUT_FILE = 'sensor_data.json'
 # ---------------------------

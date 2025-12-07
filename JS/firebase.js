@@ -1,7 +1,7 @@
 // Import Firebase modules from the SAME version
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js';
-import { getDatabase, ref, push, set, get, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js';
+import { getDatabase, ref, push, set, get, off, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js';
 
 import { firebaseConfig } from './firebase-config.js';
@@ -39,7 +39,8 @@ export {
   provider,
   signInWithPopup,
   onAuthStateChanged,
-  signOut
+  signOut,
+  off
 };
 
 console.log("Firebase initialized:", database);
