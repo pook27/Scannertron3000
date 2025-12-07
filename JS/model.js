@@ -68,7 +68,7 @@ function setupModelPage(user) {
                         firebaseId: currentScanId,
                         name: `Scan ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
                         date: new Date().toISOString(),
-                        status: 'Scanning...',
+                        status: 'Scanning',
                         authorId: user.displayName || user.email,
                         likes: 0,
                         views: 0
@@ -93,7 +93,7 @@ function setupModelPage(user) {
                     // 2. UX Updates
                     alert(`Scan started! ID: ${currentScanId}`);
                     newStartBtn.disabled = true;
-                    newStartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+                    newStartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning';
                     
                     // 3. AUTO-UPDATE URL (So refresh works)
                     const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?scanId=' + currentScanId;

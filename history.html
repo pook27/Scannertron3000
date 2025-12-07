@@ -62,7 +62,7 @@
                     <select class="form-select" id="statusFilter">
                         <option selected>All statuses</option>
                         <option value="completed">Completed</option>
-                        <option value="processing">Processing</option>
+                        <option value="scanning">Scanning</option>
                         <option value="failed">Failed</option>
                     </select>
                 </div>
@@ -70,125 +70,6 @@
 
             <!-- History Grid -->
             <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-4">
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <div class="ratio ratio-4x3">
-                            <img src="/Images/sample_model.png" class="card-img-top" alt="Model 1">
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="fas fa-cube me-2 text-primary"></i>
-                                Model 1
-                            </h5>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-calendar me-1"></i>
-                                Scanned on: 12 Sep 2025
-                            </p>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-check-circle me-1 text-success"></i>
-                                Status: Completed
-                            </p>
-                            <div class="d-flex flex-column gap-2">
-                                <button class="btn btn-primary btn-sm">
-                                    <i class="fas fa-eye me-1"></i>Load
-                                </button>
-                                <button class="btn btn-success btn-sm">
-                                    <i class="fas fa-download me-1"></i>Download
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <div class="ratio ratio-4x3">
-                            <img src="/Images/sample_model.png" class="card-img-top" alt="Model 2">
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="fas fa-cube me-2 text-primary"></i>
-                                Model 2
-                            </h5>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-calendar me-1"></i>
-                                Scanned on: 11 Sep 2025
-                            </p>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-spinner me-1 text-warning"></i>
-                                Status: Processing
-                            </p>
-                            <div class="d-flex flex-column gap-2">
-                                <button class="btn btn-primary btn-sm" disabled>
-                                    <i class="fas fa-eye me-1"></i>Load
-                                </button>
-                                <button class="btn btn-success btn-sm" disabled>
-                                    <i class="fas fa-download me-1"></i>Download
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <div class="ratio ratio-4x3">
-                            <img src="/Images/sample_model.png" class="card-img-top" alt="Model 3">
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="fas fa-cube me-2 text-primary"></i>
-                                Model 3
-                            </h5>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-calendar me-1"></i>
-                                Scanned on: 10 Sep 2025
-                            </p>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-check-circle me-1 text-success"></i>
-                                Status: Completed
-                            </p>
-                            <div class="d-flex flex-column gap-2">
-                                <button class="btn btn-primary btn-sm">
-                                    <i class="fas fa-eye me-1"></i>Load
-                                </button>
-                                <button class="btn btn-success btn-sm">
-                                    <i class="fas fa-download me-1"></i>Download
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col">
-                    <div class="card h-100 shadow-sm">
-                        <div class="ratio ratio-4x3">
-                            <img src="/Images/sample_model.png" class="card-img-top" alt="Model 4">
-                        </div>
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <i class="fas fa-cube me-2 text-primary"></i>
-                                Model 4
-                            </h5>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-calendar me-1"></i>
-                                Scanned on: 09 Sep 2025
-                            </p>
-                            <p class="card-text text-muted small">
-                                <i class="fas fa-times-circle me-1 text-danger"></i>
-                                Status: Failed
-                            </p>
-                            <div class="d-flex flex-column gap-2">
-                                <button class="btn btn-warning btn-sm">
-                                    <i class="fas fa-redo me-1"></i>Retry
-                                </button>
-                                <button class="btn btn-outline-danger btn-sm">
-                                    <i class="fas fa-trash me-1"></i>Delete
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>

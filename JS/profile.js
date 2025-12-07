@@ -1,4 +1,192 @@
 import { auth, update, database, ref, onValue, onAuthStateChanged, signOut, get } from './firebase.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
+
+// ====================================================================
+//                    3D THUMBNAIL MANAGER (Reused)
+// ====================================================================
+class ThumbnailManager {
+    constructor() {
+        this.renderer = null;
+        this.scene = null;
+        this.camera = null;
+        this.animationId = null;
+        this.currentContainer = null;
+        this.cache = {}; 
+    }
+
+    async activateThumbnail(container, scanId) {
+        this.currentContainer = container;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        const img = container.querySelector('img');
+
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(0xf8f9fa);
+
+        this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+        this.camera.position.z = 50;
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer.setSize(width, height);
+        this.renderer.domElement.style.position = 'absolute';
+        this.renderer.domElement.style.top = '0';
+        this.renderer.domElement.style.left = '0';
+        this.renderer.domElement.style.zIndex = '10';
+        
+        container.appendChild(this.renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        this.scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 10, 10);
+        this.scene.add(dirLight);
+
+        if(img) img.style.opacity = '0.3';
+
+        try {
+            let scanData = this.cache[scanId];
+            if (!scanData) {
+                const snapshot = await get(ref(database, `scans/${scanId}`));
+                scanData = snapshot.val();
+                this.cache[scanId] = scanData;
+            }
+            if (scanData) this.createMesh(scanData);
+        } catch (error) {
+            console.error("Error loading thumbnail:", error);
+        }
+        this.animate();
+    }
+
+    deactivateThumbnail() {
+        if (this.animationId) cancelAnimationFrame(this.animationId);
+        if (this.renderer && this.currentContainer) {
+            this.currentContainer.removeChild(this.renderer.domElement);
+            this.renderer.dispose();
+            const img = this.currentContainer.querySelector('img');
+            if(img) img.style.opacity = '1';
+        }
+        this.renderer = null;
+        this.scene = null;
+        this.camera = null;
+        this.currentContainer = null;
+    }
+
+    animate() {
+        if (!this.renderer) return;
+        this.animationId = requestAnimationFrame(() => this.animate());
+        if (this.scene.children.length > 2) {
+            const mesh = this.scene.children[2];
+            mesh.rotation.y += 0.02;
+            mesh.rotation.x = 0.5;
+        }
+        this.renderer.render(this.scene, this.camera);
+    }
+
+    createMesh(data) {
+        const levels = this.extractLevels(data);
+        if (levels.length === 0) return;
+        const gapThresholdSq = this.calculateGapThreshold(levels);
+        const clusteredLevels = levels.map(l => this.clusterLevelByGaps(l, gapThresholdSq));
+        const geometry = this.buildConnections(clusteredLevels);
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x00b0ff, roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        geometry.computeBoundingBox();
+        const center = new THREE.Vector3();
+        geometry.boundingBox.getCenter(center);
+        mesh.position.sub(center);
+
+        const size = new THREE.Vector3();
+        geometry.boundingBox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        this.camera.position.z = maxDim * 2.0;
+
+        this.scene.add(mesh);
+    }
+
+    extractLevels(data) {
+        let levels = [];
+        if (typeof data === 'object' && data !== null) {
+            const sortedKeys = Object.keys(data).filter(k => !isNaN(parseInt(k))).sort((a,b)=>a-b);
+            levels = sortedKeys.map(k => {
+                const ld = data[k];
+                if(Array.isArray(ld)) return ld.map(p=>new THREE.Vector3(p.x,p.y,p.z));
+                if(typeof ld==='object') return Object.values(ld).map(p=>new THREE.Vector3(p.x,p.y,p.z));
+                return [];
+            }).filter(l=>l.length>0);
+        }
+        return levels;
+    }
+
+    calculateGapThreshold(levels) {
+        if (!levels[0] || !levels[0].length) return 100;
+        const step = (2*Math.PI)/levels[0].length;
+        let maxR = 0;
+        levels.slice(0,5).forEach(l => l.forEach(p => { const r=Math.sqrt(p.x*p.x+p.y*p.y); if(r>maxR)maxR=r; }));
+        return Math.pow(maxR*step*100, 2);
+    }
+
+    clusterLevelByGaps(level, thresh) {
+        const contours = []; let cur = [];
+        for(let i=0; i<level.length; i++) {
+            const p1=level[i], p2=level[(i+1)%level.length];
+            if(p1.x||p1.y) cur.push(p1);
+            if((p1.distanceToSquared(p2)>thresh || (!p2.x&&!p2.y)) && cur.length) {
+                if(cur.length>2) contours.push(cur); cur=[];
+            }
+        }
+        if(cur.length>2) contours.push(cur);
+        return contours;
+    }
+
+    getCentroid(c) { let x=0,y=0; c.forEach(p=>{x+=p.x;y+=p.y}); return new THREE.Vector2(x/c.length,y/c.length); }
+
+    buildConnections(clustered) {
+        const geo = new THREE.BufferGeometry(); const verts=[]; const inds=[]; let vIdx=0;
+        for(let i=0; i<clustered.length-1; i++) {
+            const cur=clustered[i], nxt=clustered[i+1];
+            cur.forEach(cA => {
+                const centA = this.getCentroid(cA);
+                let bestB=null, minD=Infinity;
+                nxt.forEach(cB => { const d=centA.distanceToSquared(this.getCentroid(cB)); if(d<minD){minD=d; bestB=cB;} });
+                if(bestB) vIdx = this.stitch(verts, inds, cA, bestB, vIdx);
+            });
+        }
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+        geo.setIndex(inds);
+        return geo;
+    }
+
+    stitch(verts, inds, cA, cB, vIdx) {
+        const nA=cA.length, nB=cB.length;
+        const iA=[]; cA.forEach(p=>{iA.push(vIdx++); verts.push(p.x,p.y,p.z)});
+        const iB=[]; cB.forEach(p=>{iB.push(vIdx++); verts.push(p.x,p.y,p.z)});
+        
+        let bestJ=0, minD=Infinity;
+        cB.forEach((p,j)=>{ const d=cA[0].distanceToSquared(p); if(d<minD){minD=d; bestJ=j} });
+        
+        let i=0, j=bestJ, sA=0, sB=0;
+        while(sA<nA || sB<nB) {
+            const idxA=iA[i%nA], idxA2=iA[(i+1)%nA];
+            const idxB=iB[j%nB], idxB2=iB[(j+1)%nB];
+            if(sA>=nA) { inds.push(idxA,idxB,idxB2); j++; sB++; continue; }
+            if(sB>=nB) { inds.push(idxA,idxB,idxA2); i++; sA++; continue; }
+            if(nA-sA > nB-sB) { inds.push(idxA,idxB,idxA2); i++; sA++; }
+            else { inds.push(idxA,idxB,idxB2); j++; sB++; }
+        }
+        return vIdx;
+    }
+}
+
+const thumbnailManager = new ThumbnailManager();
+
+// ====================================================================
+//                    PROFILE LOGIC
+// ====================================================================
 
 function renderProfileModels(models) {
     const modelsContainer = document.querySelector('.row.row-cols-1.row-cols-sm-2.row-cols-lg-3.row-cols-xl-4.g-4');
@@ -20,9 +208,13 @@ function renderProfileModels(models) {
     modelsContainer.innerHTML = models.map(model => `
         <div class="col" data-model-id="${model.firebaseId}">
             <div class="card h-100 shadow-sm">
-                <div class="ratio ratio-4x3">
-                    <img src="Images/sample_model.png" class="card-img-top" alt="${model.name}">
+                <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${model.firebaseId}">
+                    <img src="/Final Project Site/Images/sample_model.png" class="card-img-top" alt="${model.name}" style="transition: opacity 0.3s;">
+                    <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
+                        <i class="fas fa-cube"></i> Hover 3D
+                    </div>
                 </div>
+                
                 <div class="card-body">
                     <h5 class="card-title">
                         <i class="fas fa-cube me-2 text-primary"></i>
@@ -42,10 +234,21 @@ function renderProfileModels(models) {
                             ${model.views || 0} views
                         </div>
                     </div>
+                    <a href="model.html?scanId=${model.firebaseId}" class="btn btn-outline-primary btn-sm w-100 mt-2">
+                        View Details
+                    </a>
                 </div>
             </div>
         </div>
     `).join('');
+
+    // --- ATTACH HOVER LISTENERS ---
+    const thumbContainers = modelsContainer.querySelectorAll('.thumbnail-container');
+    thumbContainers.forEach(thumb => {
+        const id = thumb.getAttribute('data-id');
+        thumb.addEventListener('mouseenter', () => thumbnailManager.activateThumbnail(thumb, id));
+        thumb.addEventListener('mouseleave', () => thumbnailManager.deactivateThumbnail());
+    });
 }
 
 function loadProfileData(user) {
@@ -56,27 +259,17 @@ function loadProfileData(user) {
         usernameElement.innerHTML = `<i class="fas fa-at me-2"></i>${userName}`;
     }
 
-    // Update profile photo if available (with fallback)
     const profilePhotoElements = document.querySelectorAll('.profile-photo img, .profile-img, .profile-img-sm');
     if (profilePhotoElements) {
         profilePhotoElements.forEach(img => {
-            if (user.photoURL) {
-                img.src = user.photoURL;
-            } else {
-                img.src = "Images/user.jpg"; // Corrected relative path
-            }
+            img.src = user.photoURL || "/Final Project Site/Images/user.jpg";
         });
     }
 
-    // 2. Fetch User Stats (Total Scans, Likes, etc)
+    // 2. Fetch User Stats
     const userMetaRef = ref(database, `users/${user.uid}`);
     get(userMetaRef).then(snapshot => {
-        const userData = snapshot.val() || {
-            totalScans: 0,
-            totalLikes: 0,
-            totalViews: 0,
-            bio: 'Passionate 3D scanner and maker.'
-        };
+        const userData = snapshot.val() || {};
         
         const statNumbers = document.querySelectorAll('.stat-number');
         if (statNumbers.length >= 3) {
@@ -91,7 +284,7 @@ function loadProfileData(user) {
         }
     }).catch(console.error);
 
-    // 3. Fetch and Display User Scans (Real-time updates)
+    // 3. Fetch Scans
     const scansRef = ref(database, `users/${user.uid}/scans`);
     
     onValue(scansRef, snapshot => {
@@ -100,35 +293,21 @@ function loadProfileData(user) {
         
         for (const key in scanData) {
             const scan = scanData[key];
-            
             // Only show completed scans on profile
             if (scan.status && scan.status.toLowerCase() === 'completed') {
-                if (!scan.firebaseId) {
-                    scan.firebaseId = key;
-                }
-                // We can save the list key separately if needed
-                scan.userListKey = key;
-                
+                if (!scan.firebaseId) scan.firebaseId = key;
                 models.push(scan);
             }
         }
         
-        // --- CHANGE: Show only the 3 most recent models ---
+        // --- CHANGE: Show 4 most recent models ---
         const recentModels = models
-            .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort Newest First
-            .slice(0, 3); // Take top 3
+            .sort((a, b) => new Date(b.date) - new Date(a.date)) 
+            .slice(0, 4);
         
         renderProfileModels(recentModels);
-
-        // Update total scans count (based on actual list length)
-        const totalScans = models.length;
-        const firstStatNumber = document.querySelector('.stat-number');
-        if (firstStatNumber) {
-            firstStatNumber.innerHTML = `<i class="fas fa-cube m-2 text-primary"></i>${totalScans}`;
-        }
     });
 
-    // 4. Update Stats Logic
     calculateTotalStats(user.uid);
 }
 
@@ -144,23 +323,10 @@ async function calculateTotalStats(userId) {
             totalViews += scan.views || 0;
         });
 
-        // Update UI immediately for responsiveness
         const statNumbers = document.querySelectorAll('.stat-number');
         if (statNumbers.length >= 3) {
             statNumbers[1].innerHTML = `<i class="fas fa-heart m-2 text-danger"></i>${totalLikes}`;
             statNumbers[2].innerHTML = `<i class="fas fa-eye m-2 text-info"></i>${totalViews}`;
-        }
-
-        // Persist to DB if changed
-        const userMetaRef = ref(database, `users/${userId}`);
-        const currentMeta = (await get(userMetaRef)).val() || {};
-        
-        if (currentMeta.totalLikes !== totalLikes || currentMeta.totalViews !== totalViews) {
-            await update(userMetaRef, {
-                totalLikes,
-                totalViews,
-                lastUpdated: new Date().toISOString()
-            });
         }
     } catch (error) {
         console.error("Error calculating total stats:", error);
@@ -170,21 +336,9 @@ async function calculateTotalStats(userId) {
 onAuthStateChanged(auth, (user) => {
     if (user) {
         loadProfileData(user);
-        
-        const userDisplay = document.getElementById('user-display');
-        if (userDisplay) {
-            userDisplay.innerText = user.displayName || user.email;
-        }
-        
-        // Logout handled by navbar-auth.js usually, but fallback here:
         document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
             e.preventDefault();
-            try {
-                await signOut(auth);
-                window.location.href = 'login.html';
-            } catch (error) {
-                console.error("Error signing out:", error);
-            }
+            try { await signOut(auth); window.location.href = 'login.html'; } catch (error) { console.error(error); }
         });
     } else {
         window.location.href = 'login.html';
