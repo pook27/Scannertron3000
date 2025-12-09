@@ -277,7 +277,7 @@ function appendGalleryCard(item, isLiked) {
         <div class="col" data-gallery-id="${item.galleryId}">
             <div class="card h-100 shadow-sm">
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${item.galleryId}">
-                    <img src="/Final Project Site/Images/sample_model.png" class="card-img-top gallery-view-trigger" data-id="${item.galleryId}" alt="${item.name}" style="transition: opacity 0.3s;">
+                    <img src="" class="card-img-top gallery-view-trigger" data-id="${item.galleryId}" alt="${item.name}" style="transition: opacity 0.3s;">
                     <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
                         <i class="fas fa-cube"></i> Hover 3D
                     </div>
