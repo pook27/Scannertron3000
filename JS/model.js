@@ -455,13 +455,13 @@ function stitchContours(vertices, indices, contourA, contourB, vertexIndex) {
     return vertexIndex;
 }
 
-function fanTriangulation(points) {
-    const indices = [];
-    for(let i=1; i<points.length-1; i++) {
-        indices.push(0, i, i+1);
-    }
-    return indices;
-}
+// function fanTriangulation(points) {
+//     const indices = [];
+//     for(let i=1; i<points.length-1; i++) {
+//         indices.push(0, i, i+1);
+//     }
+//     return indices;
+// }
 
 // ============================================================================
 //                  THREE.JS SETUP
@@ -526,6 +526,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
+//TODO add download functionality
 function downloadCurrentScan(scanId) {
     if (!currentMesh) return alert("No mesh to download.");
     alert("Download functionality not implemented in this demo.");

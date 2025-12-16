@@ -13,7 +13,7 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const database = getDatabase(app);
 
-// Optional: expose Firebase Realtime DB globally
+
 window.firebaseDB = {
   database,
   ref,

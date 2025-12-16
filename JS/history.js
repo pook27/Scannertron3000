@@ -1,4 +1,4 @@
-import { database, ref, onValue, remove, onAuthStateChanged, signOut, update, get } from './firebase.js';
+import { database, ref, onValue, remove, onAuthStateChanged, signOut, get } from './firebase.js';
 import { auth } from './firebase.js';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
 
@@ -254,17 +254,6 @@ class ScanManager {
     
     removeScan(userListId) {
         return remove(ref(database, `users/${this.uid}/scans/${userListId}`));
-    }
-
-    async retryScan(userListId) {
-        const scanRef = ref(database, `users/${this.uid}/scans/${userListId}`);
-        await update(scanRef, { 
-            status: 'Scanning',
-            retryTimestamp: new Date().toISOString()
-        });
-
-        console.log(`Retrying scan entry ${userListId}`);
-        alert('Retry initiated.');
     }
 }
 
