@@ -3,75 +3,100 @@ import numpy as np
 import json
 
 # --- Simulation Settings ---
-# Set these to match your theoretical sensor
-NUM_LEVELS = 200  # How many "rings" to scan
-POINTS_PER_RING = 100  # How many sensor "pings" per 360-degree spin
-MODEL_FILE = '3DBenchy.stl'  # Change this to '3DBenchy.stl' or your model
-# FIX: Output file is now a .json file
+NUM_LEVELS = 200  # Vertical resolution
+POINTS_PER_RING = 360  # Angular resolution (1 degree steps)
+MODEL_FILE = '3DBenchy.stl'
 OUTPUT_FILE = 'sensor_data.json'
-# ---------------------------
 
-# 1. Load your 3D model file
+# 1. Load & Center Mesh
 try:
     mesh = trimesh.load_mesh(MODEL_FILE)
 except Exception as e:
-    print(f"Error loading mesh: {e}")
-    print(f"Please make sure '{MODEL_FILE}' is in the same directory.")
+    print(f"Error: {e}")
     exit()
 
-# 2. Consolidate and Center the Mesh
 if isinstance(mesh, trimesh.Scene):
-    print("STL contains multiple bodies. Consolidating into a single mesh...")
     mesh = mesh.dump(concatenate=True)
-mesh.apply_translation(-mesh.center_mass)
-print("Mesh consolidated and centered at (0, 0, 0).")
 
-# 3. Define Z-heights and Angles
+# Center the mesh at 0,0,0
+mesh.apply_translation(-mesh.center_mass)
+
+# 2. Calculate Bounds & Sensor Position
 z_min = mesh.bounds[0][2]
 z_max = mesh.bounds[1][2]
-print(f"Slicing from z={z_min:.2f} to z={z_max:.2f}")
 
-z_heights = np.linspace(z_min, z_max, NUM_LEVELS)
+# Important: Determine how far out the "sensor" should be.
+# We take the max width of the object and multiply by 1.5 to be safe.
+max_width = max(abs(mesh.bounds[0][0]), abs(mesh.bounds[1][0]), abs(mesh.bounds[0][1]), abs(mesh.bounds[1][1]))
+SENSOR_RADIUS = max_width * 2.0
+
+print(f"Object bounds: Z={z_min:.2f} to {z_max:.2f}")
+print(f"Simulating Sensor at Radius: {SENSOR_RADIUS:.2f}")
+
+z_heights = np.linspace(z_min + 1, z_max - 1, NUM_LEVELS)
 angles = np.linspace(0, 2 * np.pi, POINTS_PER_RING, endpoint=False)
 
-print("Using built-in 'mesh.ray' for raycasting.")
-
-# 5. Simulate the Scan
 all_levels = []
-print(f"Simulating scan with {NUM_LEVELS} levels and {POINTS_PER_RING} points per level...")
 
-for z in z_heights:
+print(f"Scanning {NUM_LEVELS} layers...")
+
+for i, z in enumerate(z_heights):
+    # 1. ORIGIN: Create a ring of points OUTSIDE the object
     ray_origins = np.zeros((POINTS_PER_RING, 3))
+    ray_origins[:, 0] = SENSOR_RADIUS * np.cos(angles)
+    ray_origins[:, 1] = SENSOR_RADIUS * np.sin(angles)
     ray_origins[:, 2] = z
 
-    ray_directions = np.zeros((POINTS_PER_RING, 3))
-    ray_directions[:, 0] = np.cos(angles)
-    ray_directions[:, 1] = np.sin(angles)
+    # 2. DIRECTION: Point INWARDS towards (0,0,z)
+    # The direction vector is just the inverse of the origin vector (normalized)
+    ray_directions = -ray_origins.copy()
+    ray_directions[:, 2] = 0  # Ensure we shoot perfectly horizontal
+    # Normalize vectors
+    norms = np.linalg.norm(ray_directions, axis=1)
+    ray_directions = ray_directions / norms[:, np.newaxis]
 
-    # Use the built-in 'mesh.ray' intersector
+    # 3. SHOOT RAYS
+    # hit_locations = XYZ of where the ray hit
+    # index_ray = which ray number (0..359) hit something
     hit_locations, index_ray, _ = mesh.ray.intersects_location(
         ray_origins, ray_directions
     )
 
-    hits_map = {idx: loc for idx, loc in zip(index_ray, hit_locations)}
+    # 4. FILTER: Find the CLOSEST hit to the SENSOR (not the center)
+    # We want the first surface the laser touches.
 
+    closest_hits = {}  # Map: ray_index -> (distance_from_sensor, xyz_location)
+
+    for hit_idx, ray_idx in enumerate(index_ray):
+        loc = hit_locations[hit_idx]
+        origin = ray_origins[ray_idx]
+
+        # Calculate distance from SENSOR to HIT
+        dist_sq = (loc[0] - origin[0]) ** 2 + (loc[1] - origin[1]) ** 2
+
+        if ray_idx not in closest_hits:
+            closest_hits[ray_idx] = (dist_sq, loc)
+        else:
+            # If this hit is closer to the sensor than the previous one, take it
+            if dist_sq < closest_hits[ray_idx][0]:
+                closest_hits[ray_idx] = (dist_sq, loc)
+
+    # 5. FORMATTING
     level_points = []
     for j in range(POINTS_PER_RING):
-        if j in hits_map:
-            # Ray HIT: Add a {x, y, z} dictionary
-            p = hits_map[j]
-            level_points.append({'x': float(p[0]), 'y': float(p[1]), 'z': float(p[2])})
+        if j in closest_hits:
+            loc = closest_hits[j][1]
+            level_points.append({'x': float(loc[0]), 'y': float(loc[1]), 'z': float(loc[2])})
         else:
-            # Ray MISSED: Add a dictionary for the center point
+            # MISS: Return 0,0,z so the Javascript knows it's empty space
             level_points.append({'x': 0.0, 'y': 0.0, 'z': float(z)})
 
-    all_levels.append(level_points)  # Add the list of dictionaries
+    all_levels.append(level_points)
 
-# 6. Save the final data
-# Use json.dump to write the data as a clean JSON file
+    if i%5 == 0:print(f"Processed Layer {i}. {100*i/NUM_LEVELS}% Done.")
+
+# 3. Save
 with open(OUTPUT_FILE, "w") as f:
-    json.dump(all_levels, f, indent=2)  # indent=2 is optional, but nice for readability
+    json.dump(all_levels, f)
 
-print(f"\nSuccessfully generated '{OUTPUT_FILE}'!")
-print(f"Total levels generated: {len(all_levels)}")
-
+print(f"Done! {OUTPUT_FILE} generated.")
