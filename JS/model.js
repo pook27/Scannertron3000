@@ -1,5 +1,6 @@
 import { auth, onAuthStateChanged, signOut, database, ref, update, push, get, set, onValue, remove, off } from './firebase.js';
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
+import * as THREE from 'three';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 
 let scene, camera, renderer;
 let currentMesh = null;
@@ -112,11 +113,30 @@ function setupModelPage(user) {
 
     if (downloadModelButton) {
         downloadModelButton.addEventListener('click', () => {
-            if (!currentScanId) {
-                alert("No active scan to download.");
+            // Assume 'scene' is your global Three.js scene object
+            // If 'scene' is not global, you must pass it into this function
+            if (typeof scene === 'undefined') {
+                console.error("Three.js Scene not found. Make sure your 3D variable is accessible.");
+                alert("Error: No 3D model found to export.");
                 return;
             }
-            downloadCurrentScan(currentScanId);
+
+            const exporter = new OBJExporter();
+            const result = exporter.parse(scene);
+            
+            // Create the blob and link
+            const blob = new Blob([result], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.href = url;
+            link.download = `scannertron_scan_${timestamp}.obj`;
+            link.click();
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+            console.log('Model exported as OBJ.');
         });
     }
 }
@@ -516,11 +536,6 @@ function animate() {
         currentMesh.rotation.y = rotation.y;
     }
     renderer.render(scene, camera);
-}
-
-function downloadCurrentScan(scanId) {
-    if (!currentMesh) return alert("No mesh to download.");
-    alert("Download functionality not implemented in this demo.");
 }
 
 function cleanup() {

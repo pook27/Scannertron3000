@@ -309,6 +309,9 @@ function appendScanCard(scan) {
                             <button class="btn btn-success btn-sm action-btn" data-action="Download" data-id="${scan.firebaseId}">
                                 <i class="fas fa-download me-1"></i>Download
                             </button>
+                            <button class="btn btn-info btn-sm action-btn text-white" data-action="Share" data-id="${scan.firebaseId}">
+                                <i class="fas fa-share-alt me-1"></i>Share
+                            </button>
                             <button class="btn btn-outline-danger btn-sm action-btn" data-action="Delete" data-id="${scan.userListId}">
                                 <i class="fas fa-trash me-1"></i>Delete
                             </button>
@@ -356,6 +359,20 @@ async function handleScanAction(e) {
         }
     } else if (action === 'Load') {
         window.location.href = `model.html?scanId=${id}`;
+    } else if (action === 'Share') {
+    const shareUrl = `${window.location.origin}/Final Project Site/model.html?id=${scanId}`;
+    
+    navigator.clipboard.writeText(shareUrl).then(() => {
+        // Visual feedback (Toast or Alert)
+        alert(`Link copied to clipboard!\n${shareUrl}`);
+        
+        const btn = target;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `<i class="fas fa-check me-1"></i>Copied!`;
+        setTimeout(() => btn.innerHTML = originalHtml, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+    });
     } else if (action === 'Download') {
         try {
             const scanData = scanManager.scans.find(s => s.firebaseId === id);
