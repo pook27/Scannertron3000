@@ -1,7 +1,8 @@
-// Import Firebase modules from the SAME version
+// Import Firebase modules
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-analytics.js';
-import { getDatabase, ref, push, set, get, off, onValue, remove, update } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js';
+// ADDED query, orderByChild, equalTo
+import { getDatabase, ref, push, set, get, off, onValue, remove, update, runTransaction, query, orderByChild, equalTo } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js';
 
 import { firebaseConfig } from './firebase-config.js';
@@ -13,7 +14,6 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const database = getDatabase(app);
 
-
 window.firebaseDB = {
   database,
   ref,
@@ -22,7 +22,11 @@ window.firebaseDB = {
   get,
   onValue,
   remove,
-  update
+  update,
+  runTransaction,
+  query,
+  orderByChild,
+  equalTo
 };
 
 // Export for use in other modules
@@ -35,6 +39,10 @@ export {
   onValue,
   update,
   remove,
+  runTransaction,
+  query,
+  orderByChild,
+  equalTo,
   auth,
   provider,
   signInWithPopup,
@@ -43,4 +51,4 @@ export {
   off
 };
 
-console.log("Firebase initialized:", database);
+console.log("Firebase initialized");

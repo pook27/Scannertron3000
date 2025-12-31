@@ -1,9 +1,10 @@
-import { database, ref, onValue, remove, onAuthStateChanged, signOut, get } from './firebase.js';
+import { database, ref, onValue, remove, onAuthStateChanged, signOut, get, update } from './firebase.js';
 import { auth } from './firebase.js';
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
+import * as THREE from 'three';
+import { OBJExporter } from 'three/addons/exporters/OBJExporter.js';
 
 // ====================================================================
-//                    3D THUMBNAIL MANAGER
+//                    3D THUMBNAIL MANAGER & EXPORTER
 // ====================================================================
 class ThumbnailManager {
     constructor() {
@@ -12,19 +13,17 @@ class ThumbnailManager {
         this.camera = null;
         this.animationId = null;
         this.currentContainer = null;
-        this.cache = {}; // Cache scan data to avoid re-fetching
+        this.cache = {}; 
     }
 
     async activateThumbnail(container, scanId) {
-        // 1. Setup Container
         this.currentContainer = container;
         const width = container.clientWidth;
         const height = container.clientHeight;
         const img = container.querySelector('img');
 
-        // 2. Init Three.js
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0xf8f9fa); // Match Bootstrap bg-light
+        this.scene.background = new THREE.Color(0xf8f9fa); 
 
         this.camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
         this.camera.position.z = 50;
@@ -34,38 +33,38 @@ class ThumbnailManager {
         this.renderer.domElement.style.position = 'absolute';
         this.renderer.domElement.style.top = '0';
         this.renderer.domElement.style.left = '0';
-        this.renderer.domElement.style.zIndex = '10'; // On top of image
+        this.renderer.domElement.style.zIndex = '10'; 
         
         container.appendChild(this.renderer.domElement);
 
-        // 3. Lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         this.scene.add(ambientLight);
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(10, 10, 10);
         this.scene.add(dirLight);
 
-        // 4. Loading Indicator
-        if(img) img.style.opacity = '0.3'; // Dim image while loading
+        if(img) img.style.opacity = '0.3'; 
 
         try {
-            // 5. Fetch Data (Check cache first)
             let scanData = this.cache[scanId];
             if (!scanData) {
                 const snapshot = await get(ref(database, `scans/${scanId}`));
                 scanData = snapshot.val();
-                this.cache[scanId] = scanData; // Save to cache
+                this.cache[scanId] = scanData; 
             }
 
-            // 6. Generate Mesh
             if (scanData) {
-                this.createMesh(scanData);
+                // Generate the mesh and add to scene
+                const mesh = this.generateMesh(scanData);
+                if (mesh) {
+                    this.scene.add(mesh);
+                    this.fitCameraToMesh(mesh);
+                }
             }
         } catch (error) {
             console.error("Error loading thumbnail:", error);
         }
 
-        // 7. Start Animation Loop
         this.animate();
     }
 
@@ -76,7 +75,6 @@ class ThumbnailManager {
             this.currentContainer.removeChild(this.renderer.domElement);
             this.renderer.dispose();
             
-            // Restore image opacity
             const img = this.currentContainer.querySelector('img');
             if(img) img.style.opacity = '1';
         }
@@ -91,20 +89,20 @@ class ThumbnailManager {
         if (!this.renderer) return;
         this.animationId = requestAnimationFrame(() => this.animate());
         
-        // Auto-rotate the model
-        if (this.scene.children.length > 2) { // 0: Ambient, 1: DirLight, 2: Mesh
+        // Auto-rotate mesh (assumes mesh is at index 2)
+        if (this.scene.children.length > 2) { 
             const mesh = this.scene.children[2];
-            mesh.rotation.y += 0.02; // Spin speed
-            mesh.rotation.x = 0.5;   // Tilt slightly
+            mesh.rotation.y += 0.02; 
+            mesh.rotation.x = 0.5;   
         }
         
         this.renderer.render(this.scene, this.camera);
     }
 
-    // --- REUSED MESH GENERATION LOGIC ---
-    createMesh(data) {
+    // --- MESH GENERATION (Refactored to return Mesh) ---
+    generateMesh(data) {
         const levels = this.extractLevels(data);
-        if (levels.length === 0) return;
+        if (levels.length === 0) return null;
 
         const gapThresholdSq = this.calculateGapThreshold(levels);
         const clusteredLevels = levels.map(l => this.clusterLevelByGaps(l, gapThresholdSq));
@@ -126,16 +124,20 @@ class ThumbnailManager {
         geometry.boundingBox.getCenter(center);
         mesh.position.sub(center);
 
-        // Fit Camera
+        return mesh;
+    }
+
+    fitCameraToMesh(mesh) {
+        if (!mesh || !this.camera) return;
+        const geometry = mesh.geometry;
+        geometry.computeBoundingBox();
         const size = new THREE.Vector3();
         geometry.boundingBox.getSize(size);
         const maxDim = Math.max(size.x, size.y, size.z);
         this.camera.position.z = maxDim * 2.0;
-
-        this.scene.add(mesh);
     }
 
-    // Helpers copied from model.js for consistency
+    // Helpers
     extractLevels(data) {
         let levels = [];
         if (typeof data === 'object' && data !== null) {
@@ -193,17 +195,14 @@ class ThumbnailManager {
         const nA=cA.length, nB=cB.length;
         const iA=[]; cA.forEach(p=>{iA.push(vIdx++); verts.push(p.x,p.y,p.z)});
         const iB=[]; cB.forEach(p=>{iB.push(vIdx++); verts.push(p.x,p.y,p.z)});
-        
         let bestJ=0, minD=Infinity;
         cB.forEach((p,j)=>{ const d=cA[0].distanceToSquared(p); if(d<minD){minD=d; bestJ=j} });
-        
         let i=0, j=bestJ, sA=0, sB=0;
         while(sA<nA || sB<nB) {
             const idxA=iA[i%nA], idxA2=iA[(i+1)%nA];
             const idxB=iB[j%nB], idxB2=iB[(j+1)%nB];
             if(sA>=nA) { inds.push(idxA,idxB,idxB2); j++; sB++; continue; }
             if(sB>=nB) { inds.push(idxA,idxB,idxA2); i++; sA++; continue; }
-            
             if(nA-sA > nB-sB) { inds.push(idxA,idxB,idxA2); i++; sA++; }
             else { inds.push(idxA,idxB,idxB2); j++; sB++; }
         }
@@ -239,11 +238,11 @@ class ScanManager {
                 scan.name = scan.name || 'Untitled Scan';
                 scan.status = scan.status || 'Unknown';
                 scan.date = scan.date || new Date().toISOString();
+                // Ensure privacy field exists (default false)
+                scan.private = scan.private === true;
                 
                 scan.userListId = key; 
-                if (!scan.firebaseId) {
-                    scan.firebaseId = key; 
-                }
+                if (!scan.firebaseId) scan.firebaseId = key; 
 
                 scans.push(scan);
             }
@@ -255,13 +254,27 @@ class ScanManager {
     removeScan(userListId) {
         return remove(ref(database, `users/${this.uid}/scans/${userListId}`));
     }
+
+    togglePrivacy(userListId, currentStatus, firebaseId) {
+        // Toggle user scan list
+        update(ref(database, `users/${this.uid}/scans/${userListId}`), {
+            private: !currentStatus
+        });
+        // Toggle global scan data
+        update(ref(database, `scans/${firebaseId}`), {
+            private: !currentStatus
+        });
+    }
+
+    retryScan(id) {
+        // Placeholder for retry logic
+        alert("Retry logic implementation required.");
+    }
 }
 
 function formatDate(date) {
     return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
+        year: 'numeric', month: 'short', day: 'numeric' 
     });
 }
 
@@ -278,7 +291,6 @@ function appendScanCard(scan) {
     const isFailed = scan.status.toLowerCase() === 'failed';
     const isScanning = scan.status.toLowerCase() === 'scanning';
 
-    // Added 'thumbnail-container' class and data-scan-id to the image wrapper
     return `
         <div class="col" data-scan-id="${scan.firebaseId}">
             <div class="card h-100 shadow-sm">
@@ -301,6 +313,16 @@ function appendScanCard(scan) {
                         <i class="fas ${getStatusIcon(scan.status)} me-1"></i>
                         Status: ${scan.status}
                     </p>
+                    <div class="mb-3">
+                        <button class="btn ${scan.private ? 'btn-warning text-dark' : 'btn-success'} btn-sm action-btn w-100" 
+                                data-action="TogglePrivacy" 
+                                data-id="${scan.userListId}" 
+                                data-firebase-id="${scan.firebaseId}" 
+                                data-private="${scan.private}">
+                            <i class="fas ${scan.private ? 'fa-lock' : 'fa-globe'} me-1"></i>
+                            ${scan.private ? 'Private' : 'Public'}
+                        </button>
+                    </div>
                     <div class="d-flex flex-column gap-2 mt-3">
                         ${isCompleted ? `
                             <button class="btn btn-primary btn-sm action-btn" data-action="Load" data-id="${scan.firebaseId}">
@@ -341,7 +363,7 @@ async function handleScanAction(e) {
     if (!target) return;
     
     const action = target.getAttribute('data-action');
-    const id = target.getAttribute('data-id'); 
+    const id = target.getAttribute('data-id'); // This might be userListId or firebaseId depending on context
 
     if (action === 'Delete') {
         if (!confirm('Are you sure you want to permanently delete this scan?')) return;
@@ -351,85 +373,78 @@ async function handleScanAction(e) {
             console.error("Error deleting scan:", error);
             alert("Failed to delete scan.");
         }
-    } else if (action === 'Retry') {
-        try {
-            await scanManager.retryScan(id);
-        } catch (error) {
-            console.error("Error retrying scan:", error);
-        }
-    } else if (action === 'Load') {
+    } 
+    else if (action === 'Retry') {
+        scanManager.retryScan(id);
+    } 
+    else if (action === 'Load') {
         window.location.href = `model.html?scanId=${id}`;
-    } else if (action === 'Share') {
-    const shareUrl = `${window.location.origin}/Final Project Site/model.html?id=${scanId}`;
-    
-    navigator.clipboard.writeText(shareUrl).then(() => {
-        // Visual feedback (Toast or Alert)
-        alert(`Link copied to clipboard!\n${shareUrl}`);
+    } 
+    else if (action === 'TogglePrivacy') {
+        const isPrivate = target.getAttribute('data-private') === 'true';
+        const firebaseId = target.getAttribute('data-firebase-id');
+        await scanManager.togglePrivacy(id, isPrivate, firebaseId);
+    }
+    else if (action === 'Share') {
+        // Generate Public URL
+        const shareUrl = `${window.location.origin}${window.location.pathname.replace('history.html', 'model.html')}?scanId=${id}`;
         
-        const btn = target;
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = `<i class="fas fa-check me-1"></i>Copied!`;
-        setTimeout(() => btn.innerHTML = originalHtml, 2000);
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-    });
-    } else if (action === 'Download') {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert(`Link copied to clipboard!\n${shareUrl}`);
+            
+            const originalHtml = target.innerHTML;
+            target.innerHTML = `<i class="fas fa-check me-1"></i>Copied!`;
+            setTimeout(() => target.innerHTML = originalHtml, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            prompt("Copy this link:", shareUrl);
+        });
+    } 
+    else if (action === 'Download') {
+        const btnText = target.innerHTML;
+        target.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Gen...`;
+        target.disabled = true;
+
         try {
-            const scanData = scanManager.scans.find(s => s.firebaseId === id);
-            if (!scanData) return alert("Scan data not found.");
-            // To properly download, we actually need the point data which might not be loaded in history yet
-            // If the thumbnail cache has it, we can use it, otherwise fetch
+            // 1. Get Data
             let data = thumbnailManager.cache[id];
             if (!data) {
                 const snap = await get(ref(database, `scans/${id}`));
                 data = snap.val();
             }
             
-            if(data) {
-                // Merge data into scanData temporarily for download
-                scanData.data = data;
-                downloadScanObj(scanData);
+            if (data) {
+                // 2. Generate Mesh
+                const mesh = thumbnailManager.generateMesh(data);
+                if (!mesh) throw new Error("Could not generate mesh from data");
+
+                // 3. Export to OBJ
+                const exporter = new OBJExporter();
+                const result = exporter.parse(mesh); // Parse the mesh directly
+                
+                // 4. Download
+                const blob = new Blob([result], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const name = scanManager.scans.find(s => s.firebaseId === id)?.name || "scan";
+                a.download = `${name.replace(/\s+/g, '_')}_${Date.now()}.obj`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                // Cleanup geometry (material is shared or simple)
+                mesh.geometry.dispose();
             } else {
-                alert("Could not fetch point cloud data for download.");
+                alert("Scan data is empty or not found.");
             }
         } catch (error) {
             console.error("Download error:", error);
+            alert("Error downloading model.");
+        } finally {
+            target.innerHTML = btnText;
+            target.disabled = false;
         }
     }
-}
-
-function downloadScanObj(scanData) {
-    let objContent = "# Scannertron 3000 Scan\n";
-    objContent += `# Scan: ${scanData.name}\n`;
-    objContent += `# Date: ${scanData.date}\n\n`;
-
-    const points = extractPointsFromScanData(scanData.data);
-    points.forEach(p => {
-        objContent += `v ${p.x.toFixed(6)} ${p.y.toFixed(6)} ${p.z.toFixed(6)}\n`;
-    });
-
-    const blob = new Blob([objContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${scanData.name.replace(/\s+/g, '_')}_${Date.now()}.obj`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function extractPointsFromScanData(data) {
-    const points = [];
-    // Handle both array-of-arrays and object-of-objects structure
-    if (typeof data === 'object') {
-         Object.values(data).forEach(layer => {
-             if (Array.isArray(layer)) {
-                 layer.forEach(p => points.push({x:p.x, y:p.y, z:p.z}));
-             } else if (typeof layer === 'object') {
-                 Object.values(layer).forEach(p => points.push({x:p.x, y:p.y, z:p.z}));
-             }
-         });
-    }
-    return points;
 }
 
 function filterAndRenderScans(scans) {

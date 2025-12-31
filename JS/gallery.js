@@ -1,4 +1,4 @@
-import { database, ref, onValue, onAuthStateChanged, signOut, update, get } from './firebase.js';
+import { database, ref, onValue, onAuthStateChanged, signOut, update, get, set,remove , runTransaction} from './firebase.js';
 import { auth } from './firebase.js';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
 
@@ -185,58 +185,50 @@ class ThumbnailManager {
 
 const thumbnailManager = new ThumbnailManager();
 
-// ====================================================================
-//                    GALLERY MANAGER
-// ====================================================================
-
 class GalleryManager {
     constructor(currentUserId) {
         this.galleryItems = [];
         this.currentUserId = currentUserId;
         this.userLikes = new Set(); 
+        this.viewedSession = new Set(); // Track views this session
         this.galleryContainer = document.querySelector('.row.row-cols-1.row-cols-sm-2.row-cols-lg-3.row-cols-xl-4.g-4');
     }
 
     async loadUserLikes() {
         try {
-            const snapshot = await get(ref(database, `users/${this.currentUserId}/likes`));
+            const snapshot = await get(ref(database, `users/${this.currentUserId}/favorites`));
             const likes = snapshot.val() || {};
+            // We just need the keys (scanIds) to know what to color red
             this.userLikes = new Set(Object.keys(likes));
         } catch (error) {
             console.error("Error loading user likes:", error);
         }
     }
 
-    // --- NEW LOGIC: FETCH ALL USERS & ALL SCANS ---
     loadGallery(callback) {
-        // Fetch the entire 'users' node
+        // Fetch all scans from users
         onValue(ref(database, 'users'), snapshot => {
             const usersData = snapshot.val() || {};
             const allScans = [];
 
-            // Loop through every user
             for (const userId in usersData) {
                 const user = usersData[userId];
-                
-                // If user has scans
                 if (user.scans) {
                     for (const key in user.scans) {
                         const scan = user.scans[key];
                         
-                        // Ensure we use the correct ID for the model link
+                        // 1. Check Privacy
+                        if (scan.private === true) continue;
+
                         if (!scan.firebaseId) scan.firebaseId = key;
-                        
-                        // Standardize fields
                         scan.galleryId = scan.firebaseId; 
                         scan.name = scan.name || 'Untitled Scan';
-                        scan.likes = scan.likes || 0;
-                        scan.views = scan.views || 0;
                         scan.timestamp = scan.date || new Date().toISOString();
                         
-                        // Try to get a friendly author name
-                        scan.authorId = scan.authorId || userId.substring(0,6) + '...';
+                        // --- CRITICAL CHANGE: SAVE OWNER UID ---
+                        scan.ownerUid = userId; 
+                        scan.authorName = (user.displayName || user.email || 'Unknown').split('@')[0];
 
-                        // Only show completed scans
                         if (scan.status && scan.status.toLowerCase() === 'completed') {
                             allScans.push(scan);
                         }
@@ -244,28 +236,53 @@ class GalleryManager {
                 }
             }
             
-            this.galleryItems = allScans;
-            callback(this.galleryItems);
+            // Now fetch real-time stats for these items from 'scans/'
+            Promise.all(allScans.map(async (item) => {
+                const snap = await get(ref(database, `scans/${item.firebaseId}`));
+                if (snap.exists()) {
+                    const data = snap.val();
+                    item.likes = data.likes || 0;
+                    item.views = data.views || 0;
+                }
+                return item;
+            })).then((updatedScans) => {
+                this.galleryItems = updatedScans;
+                callback(this.galleryItems);
+            });
         });
     }
 
-    async toggleLike(galleryId) {
-        // Logic might need adjustment since we aren't using a central 'public_gallery'
-        // For now, we can try to find the owner of the scan to update likes.
-        // Simplified: Just update local visual state since finding owner is expensive without index.
-        const hasLiked = this.userLikes.has(galleryId);
-        if (hasLiked) {
-             this.userLikes.delete(galleryId);
+    // --- UPDATED: Accepts ownerUid to save it ---
+    async toggleLike(galleryId, ownerUid) {
+        if (!this.currentUserId) return alert("Please login to like.");
+
+        const isLiked = this.userLikes.has(galleryId);
+        const userFavRef = ref(database, `users/${this.currentUserId}/favorites/${galleryId}`);
+        const globalScanRef = ref(database, `scans/${galleryId}/likes`);
+
+        if (isLiked) {
+            // Unlike: Remove the node
+            await remove(userFavRef);
+            await runTransaction(globalScanRef, (likes) => (likes || 0) - 1);
+            this.userLikes.delete(galleryId);
         } else {
-             this.userLikes.add(galleryId);
+            // Like: Save ownerUid instead of 'true'
+            await set(userFavRef, ownerUid); 
+            await runTransaction(globalScanRef, (likes) => (likes || 0) + 1);
+            this.userLikes.add(galleryId);
         }
-        // Force re-render to update icon
-        filterAndRenderGallery(this.galleryItems);
+        
+        // Refresh UI
+        this.loadGallery(filterAndRenderGallery); 
     }
 
     async incrementViews(galleryId) {
-        // Requires finding the specific path to update views
-        console.log("Increment view for", galleryId);
+        if (this.viewedSession.has(galleryId)) return;
+        this.viewedSession.add(galleryId);
+
+        console.log("Incrementing view for", galleryId);
+        const globalViewRef = ref(database, `scans/${galleryId}/views`);
+        runTransaction(globalViewRef, (views) => (views || 0) + 1);
     }
 }
 
@@ -273,11 +290,12 @@ function appendGalleryCard(item, isLiked) {
     const likeButtonClass = isLiked ? 'btn-danger' : 'btn-outline-danger';
     const likeIcon = isLiked ? 'fas fa-heart' : 'far fa-heart';
     
+    // --- UPDATED: Added data-owner-id to the button ---
     return `
         <div class="col" data-gallery-id="${item.galleryId}">
             <div class="card h-100 shadow-sm">
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${item.galleryId}">
-                    <img src="" class="card-img-top gallery-view-trigger" data-id="${item.galleryId}" alt="${item.name}" style="transition: opacity 0.3s;">
+                    <img src="" class="card-img-top gallery-view-trigger" data-id="${item.galleryId}" alt="${item.name}">
                     <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
                         <i class="fas fa-cube"></i> Hover 3D
                     </div>
@@ -288,19 +306,19 @@ function appendGalleryCard(item, isLiked) {
                         <i class="fas fa-cube me-2 text-primary"></i>
                         ${item.name}
                     </h5>
-                    <p class="card-text text-muted">
+                    <p class="card-text text-muted small">
                         <i class="fas fa-user me-1"></i>
-                        By ${item.authorId}
+                        By ${item.authorName || item.authorId}
                     </p>
                     <div class="d-flex justify-content-between align-items-center">
-                        <button class="btn ${likeButtonClass} btn-sm like-btn" data-id="${item.galleryId}">
+                        <button class="btn ${likeButtonClass} btn-sm like-btn" data-id="${item.galleryId}" data-owner-id="${item.ownerUid}">
                             <i class="${likeIcon} me-1"></i>${isLiked ? 'Liked' : 'Like'}
                         </button>
                         <div class="text-muted small">
                             <i class="fas fa-heart me-1 text-danger"></i>
-                            <span class="like-count">${item.likes}</span>
+                            <span class="like-count">${item.likes || 0}</span>
                             <i class="fas fa-eye ms-2 me-1 text-info"></i>
-                            <span>${item.views}</span>
+                            <span>${item.views || 0}</span>
                         </div>
                     </div>
                 </div>
@@ -313,12 +331,13 @@ function handleGalleryAction(e) {
     const likeBtn = e.target.closest('.like-btn');
     if (likeBtn) {
         const galleryId = likeBtn.getAttribute('data-id');
-        galleryManager.toggleLike(galleryId);
+        // --- UPDATED: Retrieve Owner UID ---
+        const ownerUid = likeBtn.getAttribute('data-owner-id');
+        galleryManager.toggleLike(galleryId, ownerUid);
         return;
     }
 
     const viewTrigger = e.target.closest('.gallery-view-trigger');
-    // Also handle clicking the 3D canvas container
     const thumbTrigger = e.target.closest('.thumbnail-container');
     
     if (viewTrigger || thumbTrigger) {
@@ -334,7 +353,7 @@ function filterAndRenderGallery(items) {
     
     const filteredItems = items.filter(item => {
         return (item.name.toLowerCase().includes(searchWord) ||
-               (item.authorId && item.authorId.toLowerCase().includes(searchWord)));
+               (item.authorName && item.authorName.toLowerCase().includes(searchWord)));
     });
 
     filteredItems.sort((a, b) => {
@@ -353,11 +372,14 @@ function filterAndRenderGallery(items) {
         container.removeEventListener('click', handleGalleryAction);
         container.addEventListener('click', handleGalleryAction);
 
-        // --- ATTACH HOVER LISTENERS ---
         const thumbContainers = container.querySelectorAll('.thumbnail-container');
         thumbContainers.forEach(thumb => {
             const id = thumb.getAttribute('data-id');
-            thumb.addEventListener('mouseenter', () => thumbnailManager.activateThumbnail(thumb, id));
+            thumb.addEventListener('mouseenter', () => {
+                thumbnailManager.activateThumbnail(thumb, id);
+                // Also count view on hover!
+                galleryManager.incrementViews(id);
+            });
             thumb.addEventListener('mouseleave', () => thumbnailManager.deactivateThumbnail());
         });
     }

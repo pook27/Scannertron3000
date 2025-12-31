@@ -1,4 +1,4 @@
-import { auth, update, database, ref, onValue, onAuthStateChanged, signOut, get } from './firebase.js';
+import { auth, update, database, ref, onValue, onAuthStateChanged, signOut, get, query, orderByChild, equalTo} from './firebase.js';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
 
 // ====================================================================
@@ -184,65 +184,40 @@ class ThumbnailManager {
 
 const thumbnailManager = new ThumbnailManager();
 
-// ====================================================================
-//                    PROFILE LOGIC
-// ====================================================================
-
-function renderProfileModels(models) {
-    const modelsContainer = document.querySelector('.row.row-cols-1.row-cols-sm-2.row-cols-lg-3.row-cols-xl-4.g-4');
+function renderProfileModels(models, containerId = '.row.row-cols-1.row-cols-sm-2.row-cols-lg-3.row-cols-xl-4.g-4') {
+    const modelsContainer = document.querySelector(containerId);
     if (!modelsContainer) return;
 
     if (models.length === 0) {
-        modelsContainer.innerHTML = `
-            <div class="col-12 text-center py-5">
-                <i class="fas fa-cube fa-4x text-muted mb-3"></i>
-                <p class="text-muted">No models yet. Start scanning to create your first 3D model!</p>
-                <a href="model.html" class="btn btn-primary mt-3">
-                    <i class="fas fa-plus me-2"></i>Create Your First Scan
-                </a>
-            </div>
-        `;
+        modelsContainer.innerHTML = `<p class="text-muted col-12 text-center">No models found.</p>`;
         return;
     }
 
-    modelsContainer.innerHTML = models.map(model => `
+    modelsContainer.innerHTML = models.map(model => {
+        // Fallback logic
+        const dateRaw = model.date || model.timestamp || model.createdAt;
+        const dateObj = dateRaw ? new Date(dateRaw) : new Date();
+        const displayDate = isNaN(dateObj.getTime()) ? 'Unknown Date' : dateObj.toLocaleDateString();
+        const displayName = model.name || `Scan ${model.firebaseId ? model.firebaseId.substring(0,5) : 'Unknown'}`;
+
+        return `
         <div class="col" data-model-id="${model.firebaseId}">
             <div class="card h-100 shadow-sm">
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${model.firebaseId}">
-                    <img src="/Final Project Site/Images/sample_model.png" class="card-img-top" alt="${model.name}" style="transition: opacity 0.3s;">
-                    <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
+                    <img src="Images/sample_model.png" class="card-img-top" alt="${displayName}">
+                     <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
                         <i class="fas fa-cube"></i> Hover 3D
                     </div>
                 </div>
-                
                 <div class="card-body">
-                    <h5 class="card-title">
-                        <i class="fas fa-cube me-2 text-primary"></i>
-                        ${model.name}
-                    </h5>
-                    <p class="card-text text-muted small">
-                        <i class="fas fa-calendar me-1"></i>
-                        Created: ${new Date(model.date).toLocaleDateString()}
-                    </p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div class="text-muted small">
-                            <i class="fas fa-heart me-1 text-danger"></i>
-                            ${model.likes || 0} likes
-                        </div>
-                        <div class="text-muted small">
-                            <i class="fas fa-eye me-1 text-info"></i>
-                            ${model.views || 0} views
-                        </div>
-                    </div>
-                    <a href="model.html?scanId=${model.firebaseId}" class="btn btn-outline-primary btn-sm w-100 mt-2">
-                        View Details
-                    </a>
+                    <h5 class="card-title">${displayName}</h5>
+                    <p class="card-text text-muted small"><i class="fas fa-calendar me-1"></i>${displayDate}</p>
+                    <a href="model.html?scanId=${model.firebaseId}" class="btn btn-outline-primary btn-sm w-100">View Details</a>
                 </div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
-    // --- ATTACH HOVER LISTENERS ---
     const thumbContainers = modelsContainer.querySelectorAll('.thumbnail-container');
     thumbContainers.forEach(thumb => {
         const id = thumb.getAttribute('data-id');
@@ -252,95 +227,119 @@ function renderProfileModels(models) {
 }
 
 function loadProfileData(user) {
-    // 1. Display User Auth Data
     const usernameElement = document.getElementById('profile-username');
     const userName = user.displayName || user.email.split('@')[0];
-    if (usernameElement) {
-        usernameElement.innerHTML = `<i class="fas fa-at me-2"></i>${userName}`;
-    }
+    if (usernameElement) usernameElement.innerHTML = `<i class="fas fa-at me-2"></i>${userName}`;
 
     const profilePhotoElements = document.querySelectorAll('.profile-photo img, .profile-img, .profile-img-sm');
-    if (profilePhotoElements) {
-        profilePhotoElements.forEach(img => {
-            img.src = user.photoURL || "/Final Project Site/Images/user.jpg";
-        });
-    }
+    profilePhotoElements.forEach(img => { img.src = user.photoURL || "Images/user.jpg"; });
 
     // 2. Fetch User Stats
     const userMetaRef = ref(database, `users/${user.uid}`);
     get(userMetaRef).then(snapshot => {
         const userData = snapshot.val() || {};
-        
         const statNumbers = document.querySelectorAll('.stat-number');
         if (statNumbers.length >= 3) {
             statNumbers[0].innerHTML = `<i class="fas fa-cube m-2 text-primary"></i>${userData.totalScans || 0}`;
-            statNumbers[1].innerHTML = `<i class="fas fa-heart m-2 text-danger"></i>${userData.totalLikes || 0}`;
-            statNumbers[2].innerHTML = `<i class="fas fa-eye m-2 text-info"></i>${userData.totalViews || 0}`;
         }
-
         const bioElement = document.querySelector('.profile-info p.text-muted');
-        if (bioElement && userData.bio) {
-            bioElement.innerHTML = `<i class="fas fa-info-circle me-2"></i>${userData.bio}`;
-        }
-    }).catch(console.error);
+        if (bioElement && userData.bio) bioElement.innerHTML = `<i class="fas fa-info-circle me-2"></i>${userData.bio}`;
+    });
 
-    // 3. Fetch Scans
+    // 3. Fetch My Scans
     const scansRef = ref(database, `users/${user.uid}/scans`);
-    
     onValue(scansRef, snapshot => {
         const scanData = snapshot.val() || {};
         const models = [];
-        
         for (const key in scanData) {
             const scan = scanData[key];
-            // Only show completed scans on profile
             if (scan.status && scan.status.toLowerCase() === 'completed') {
                 if (!scan.firebaseId) scan.firebaseId = key;
                 models.push(scan);
             }
         }
-        
-        // --- CHANGE: Show 4 most recent models ---
-        const recentModels = models
-            .sort((a, b) => new Date(b.date) - new Date(a.date)) 
-            .slice(0, 4);
-        
-        renderProfileModels(recentModels);
+        renderProfileModels(models.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,4)); // My Recent Models
     });
 
+    // 4. Fetch Favorites
+    loadFavorites(user.uid);
     calculateTotalStats(user.uid);
+}
+
+function loadFavorites(uid) {
+    const favRef = ref(database, `users/${uid}/favorites`);
+    onValue(favRef, async (snapshot) => {
+        const favorites = snapshot.val() || {};
+        const favModels = [];
+        
+        const container = document.getElementById('favorites-container');
+        if (!container) return;
+
+        // Iterate through favorites: scanId (Global ID) -> ownerUid
+        for (const [globalScanId, ownerUid] of Object.entries(favorites)) {
+            
+            // 1. New Logic: ownerUid is a string
+            if (typeof ownerUid === 'string') {
+                try {
+                    // PROBLEM SOLVER:
+                    // Instead of looking for `users/{owner}/scans/{globalScanId}` (which doesn't exist),
+                    // We SEARCH their list for any scan where firebaseId == globalScanId.
+                    const ownerScansRef = ref(database, `users/${ownerUid}/scans`);
+                    const q = query(ownerScansRef, orderByChild('firebaseId'), equalTo(globalScanId));
+                    
+                    const querySnap = await get(q);
+
+                    if (querySnap.exists()) {
+                        // We found the match! (Even though the keys are different)
+                        const matchData = Object.values(querySnap.val())[0]; 
+                        favModels.push(matchData);
+                    } else {
+                        // Fallback: If not in user list, try global 'scans' node
+                        console.warn(`Scan ${globalScanId} missing from user list, trying global.`);
+                        const globalSnap = await get(ref(database, `scans/${globalScanId}`));
+                        if (globalSnap.exists()) {
+                            const item = globalSnap.val();
+                            item.firebaseId = globalScanId;
+                            // Ensure display name exists
+                            item.name = item.name || "Untitled (Global)"; 
+                            favModels.push(item);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error fetching favorite:", e);
+                }
+            } 
+        }
+        renderProfileModels(favModels, '#favorites-container');
+    });
 }
 
 async function calculateTotalStats(userId) {
     try {
         const scansSnapshot = await get(ref(database, `users/${userId}/scans`));
         const scans = scansSnapshot.val() || {};
-        let totalLikes = 0;
-        let totalViews = 0;
+        let totalLikes = 0, totalViews = 0;
         
-        Object.values(scans).forEach(scan => {
-            totalLikes += scan.likes || 0;
-            totalViews += scan.views || 0;
-        });
+        const scanIds = Object.keys(scans);
+        for(const id of scanIds) {
+             const s = await get(ref(database, `scans/${id}`));
+             if(s.exists()) {
+                 totalLikes += s.val().likes || 0;
+                 totalViews += s.val().views || 0;
+             }
+        }
 
         const statNumbers = document.querySelectorAll('.stat-number');
         if (statNumbers.length >= 3) {
             statNumbers[1].innerHTML = `<i class="fas fa-heart m-2 text-danger"></i>${totalLikes}`;
             statNumbers[2].innerHTML = `<i class="fas fa-eye m-2 text-info"></i>${totalViews}`;
         }
-    } catch (error) {
-        console.error("Error calculating total stats:", error);
-    }
+    } catch (error) { console.error("Error stats:", error); }
 }
 
 onAuthStateChanged(auth, (user) => {
     if (user) {
         loadProfileData(user);
-        document.getElementById('logout-btn')?.addEventListener('click', async (e) => {
-            e.preventDefault();
-            try { await signOut(auth); window.location.href = 'login.html'; } catch (error) { console.error(error); }
-        });
-    } else {
-        window.location.href = 'login.html';
-    }
+        document.getElementById('logout-btn')?.addEventListener('click', async (e) => { e.preventDefault(); try { await signOut(auth); window.location.href = 'login.html'; } catch (error) { console.error(error); } });
+    } else { window.location.href = 'login.html'; }
 });
