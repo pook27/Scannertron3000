@@ -29,8 +29,6 @@ document.getElementById('login-btn').addEventListener('click', () => {
                 
             } catch (error) {
                 console.error("Database check failed:", error);
-                // Optional: redirect anyway, or show error
-                window.location.href = 'index.html'; 
             }
         })
         .catch(error => {
