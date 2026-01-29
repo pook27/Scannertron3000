@@ -41,20 +41,3 @@
     white-space: pre-wrap;
     word-wrap: break-word;
 }
-
-/* Tablet and Desktop Layout */
-@media (min-width: 992px) {
-    .model-layout-wrapper {
-        flex-direction: row; /* Horizontal layout on desktop */
-    }
-
-    .model-sidebar {
-        flex-basis: 300px; /* Fixed width for the sidebar */
-        flex-shrink: 0;
-        min-height: 600px;
-    }
-
-    .model-main-area {
-        min-height: 600px;
-    }
-}

@@ -66,25 +66,3 @@
 .stat-number {
     height: 30%;
 }
-
-/* Tablet and Desktop Layout */
-@media (min-width: 768px) {
-    .profile-photo {
-        margin-left: var(--spacing-xl);
-        text-align: left; /* Align photo left on desktop */
-    }
-
-    .profile-info {
-        padding: var(--spacing-md) var(--spacing-xl);
-        text-align: left;
-    }
-
-    .stats-grid {
-        justify-content: flex-start;
-        gap: var(--spacing-xl);
-    }
-    
-    .stat {
-        flex: 1 1 200px; /* More space for stats on wider screens */
-    }
-}

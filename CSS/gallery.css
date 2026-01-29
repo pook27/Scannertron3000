@@ -38,22 +38,3 @@
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-xl);
 }
-
-/* Tablet and Desktop Layout */
-@media (min-width: 768px) {
-    .gallery-filter-bar {
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-    }
-    
-    .gallery-grid {
-        /* Tablet: 2 columns */
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: var(--spacing-xl); /* 2rem gap */
-    }
-
-    .gallery-image {
-        height: 250px;
-    }
-}

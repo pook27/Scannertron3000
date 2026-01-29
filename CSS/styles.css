@@ -304,26 +304,3 @@ a:hover {
         transform: translateY(0);
     }
 }
-
-/* ========================================= */
-/* ===== 4. MEDIA QUERIES (DESKTOP) ===== */
-/* ========================================= */
-
-/* Tablet and up (min-width: 768px) */
-@media (min-width: 768px) {
-  /* Desktop padding for main containers */
-  .container-fluid.flex-grow-1,
-  .container {
-    padding: var(--spacing-xl); /* 2rem padding */
-  }
-
-  /* Section header enhancements */
-  .section-header {
-    font-size: 2rem;
-    margin-bottom: var(--spacing-xl);
-    display: inline-block;
-    text-align: left;
-    padding-bottom: 0.75rem;
-    border-bottom-width: 3px;
-  }
-}

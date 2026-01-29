@@ -138,41 +138,6 @@ video {
   transform: translateY(-2px);
 }
 
-/* Mobile Responsive */
-@media (min-width: 576px) {
-  #heroCanvas {
-    height: 350px;
-  }
-  
-  #demoCanvas {
-    height: 450px;
-  }
-}
-
-@media (min-width: 768px) {
-  .hero-section {
-    padding: var(--spacing-2xl) 0;
-  }
-  
-  #heroCanvas {
-    height: 400px;
-  }
-  
-  #demoCanvas {
-    height: 500px;
-  }
-}
-
-@media (min-width: 992px) {
-  #heroCanvas {
-    height: 450px;
-  }
-  
-  #demoCanvas {
-    height: 600px;
-  }
-}
-
 /* Loading state for canvases */
 #heroCanvas::before,
 #demoCanvas::before {
