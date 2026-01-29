@@ -8,7 +8,7 @@ let currentScanId = null;
 let currentUserScanKey = null;
 
 // Unsubscribe functions
-let scanDataUnsubscribe = null; 
+let scanDataUnsubscribe = null;
 let commandUnsubscribe = null;
 
 // --- Interaction Variables ---
@@ -19,15 +19,15 @@ let targetRotation = { x: 0, y: 0.005 };
 let autoRotate = true;
 let modelSize = { x: 0, y: 0, z: 0 };
 
-let viewMode = 'new'; 
+let viewMode = 'new';
 
 // ============================================================================
 //                            MAIN LOGIC
 // ============================================================================
 
 function setupModelPage(user) {
-    const startScanButton = document.getElementById('startScanButton'); 
-    const downloadModelButton = document.getElementById('downloadModelButton'); 
+    const startScanButton = document.getElementById('startScanButton');
+    const downloadModelButton = document.getElementById('downloadModelButton');
 
     initThreeJS();
 
@@ -38,9 +38,9 @@ function setupModelPage(user) {
         // --- VIEW MODE ---
         viewMode = 'view';
         currentScanId = scanIdFromUrl;
-        
+
         if (startScanButton) startScanButton.style.display = 'none';
-        
+
         const pageTitle = document.querySelector('h1, h2');
         if (pageTitle) pageTitle.textContent = 'Viewing Scan: ' + scanIdFromUrl;
 
@@ -49,7 +49,7 @@ function setupModelPage(user) {
     } else {
         // --- NEW SCAN MODE ---
         viewMode = 'new';
-        
+
         if (startScanButton) {
             // Remove old listeners
             startScanButton.replaceWith(startScanButton.cloneNode(true));
@@ -61,7 +61,7 @@ function setupModelPage(user) {
                     // 1. Create Database Entries
                     const newScanRef = push(ref(database, 'scans'));
                     currentScanId = newScanRef.key;
-                    
+
                     const userScanRef = push(ref(database, `users/${user.uid}/scans`));
                     currentUserScanKey = userScanRef.key;
 
@@ -95,17 +95,24 @@ function setupModelPage(user) {
                     alert(`Scan started! ID: ${currentScanId}`);
                     newStartBtn.disabled = true;
                     newStartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning';
-                    
+
                     // 3. AUTO-UPDATE URL (So refresh works)
                     const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?scanId=' + currentScanId;
-                    window.history.pushState({path:newUrl},'',newUrl);
-                    
+                    window.history.pushState({ path: newUrl }, '', newUrl);
+
                     // 4. Start Listeners
                     startMonitoringScan(currentScanId, user, newStartBtn);
 
                 } catch (error) {
                     console.error("Error starting scan:", error);
                     alert('Failed to start scan.');
+
+                    if (currentScanId && currentUserScanKey) {
+                        const updates = {};
+                        updates[`scans/${currentScanId}/status`] = 'failed';
+                        updates[`users/${user.uid}/scans/${currentUserScanKey}/status`] = 'failed';
+                        update(ref(database), updates);
+                    }
                 }
             });
         }
@@ -123,17 +130,17 @@ function setupModelPage(user) {
 
             const exporter = new OBJExporter();
             const result = exporter.parse(scene);
-            
+
             // Create the blob and link
             const blob = new Blob([result], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            
+
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
             link.href = url;
             link.download = `scannertron_scan_${timestamp}.obj`;
             link.click();
-            
+
             // Clean up
             URL.revokeObjectURL(url);
             console.log('Model exported as OBJ.');
@@ -148,31 +155,31 @@ function setupModelPage(user) {
 async function loadExistingScan(scanId) {
     try {
         console.log('Fetching scan data for:', scanId);
-        
+
         const scanRef = ref(database, `scans/${scanId}`);
         const snapshot = await get(scanRef);
-        
+
         if (!snapshot.exists()) {
             alert('Scan not found in database!');
             return;
         }
 
         const scanData = snapshot.val();
-        
+
         // --- FIX: Check if we actually have data layers ---
         const dataKeys = Object.keys(scanData).filter(key => !isNaN(parseInt(key)));
-        
+
         if (dataKeys.length === 0) {
             // Only if NO numeric keys (layers) exist do we assume it's empty
             console.warn("Scan has metadata but no points.");
             // Optional: Don't return, just let it render empty scene
-             alert('This scan has no point cloud data yet.');
-             return;
+            alert('This scan has no point cloud data yet.');
+            return;
         }
 
         // Display the model
         updateModelMesh(scanData);
-        
+
         // Listen for updates (in case it's still running)
         if (scanDataUnsubscribe) scanDataUnsubscribe();
         scanDataUnsubscribe = onValue(scanRef, (snapshot) => {
@@ -193,11 +200,11 @@ async function loadExistingScan(scanId) {
 function startMonitoringScan(scanId, user, startButton) {
     const scanDataRef = ref(database, `scans/${scanId}`);
     if (scanDataUnsubscribe) scanDataUnsubscribe();
-    
+
     // Live update the mesh
     scanDataUnsubscribe = onValue(scanDataRef, (snapshot) => {
         const data = snapshot.val();
-        if (data) updateModelMesh(data); 
+        if (data) updateModelMesh(data);
     });
 
     // Listen for completion command
@@ -219,8 +226,8 @@ function startMonitoringScan(scanId, user, startButton) {
 async function handleScanCompletion(user, scanId, startButton) {
     // Stop listening to command updates
     if (commandUnsubscribe) {
-        commandUnsubscribe(); 
-        commandUnsubscribe = null; 
+        commandUnsubscribe();
+        commandUnsubscribe = null;
     }
     // Note: We KEEP scanDataUnsubscribe to show the final model
 
@@ -243,7 +250,7 @@ async function handleScanCompletion(user, scanId, startButton) {
             await update(userMetaRef, {
                 totalScans: (currentMeta.totalScans || 0) + 1
             });
-            
+
             alert("Scan Completed! You can now view the full model.");
         }
     } catch (error) {
@@ -257,13 +264,13 @@ async function handleScanCompletion(user, scanId, startButton) {
 
 function extractLevelsFromData(data) {
     let levels = [];
-    
+
     if (typeof data === 'object' && data !== null) {
         // Filter for numeric keys "0", "1", "2"...
         const sortedKeys = Object.keys(data)
-            .filter(key => !isNaN(parseInt(key))) 
+            .filter(key => !isNaN(parseInt(key)))
             .sort((a, b) => parseInt(a) - parseInt(b));
-        
+
         levels = sortedKeys.map(key => {
             const levelData = data[key];
             // Handle Batch Structure (Object of objects) or Array
@@ -276,7 +283,7 @@ function extractLevelsFromData(data) {
             return [];
         }).filter(level => level.length > 0);
     }
-    
+
     console.log(`Extracted ${levels.length} levels`);
     return levels;
 }
@@ -306,18 +313,18 @@ function updateModelMesh(data) {
 
     currentMesh = new THREE.Mesh(geometry, material);
     scene.add(currentMesh);
-    
+
     // Auto-center
     const box = new THREE.Box3().setFromObject(currentMesh);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     modelSize = size;
     currentMesh.position.sub(center);
-    
+
     // Only adjust camera on first load or significant change
     if (camera.position.z === 40) {
-         camera.position.z = Math.max(size.x, size.y, size.z) * 1.5;
-         camera.lookAt(0, 0, 0);
+        camera.position.z = Math.max(size.x, size.y, size.z) * 1.5;
+        camera.lookAt(0, 0, 0);
     }
 }
 
@@ -328,9 +335,9 @@ function calculateGapThreshold(levels) {
     const angularStep = (2 * Math.PI) / numPoints;
     let maxRadius = 0;
     for (const level of levels.slice(0, 10)) {
-         if (!level) continue;
+        if (!level) continue;
         for (const p of level) {
-             if (!p) continue;
+            if (!p) continue;
             const r = Math.sqrt(p.x * p.x + p.y * p.y);
             if (r > maxRadius) maxRadius = r;
         }
@@ -343,19 +350,19 @@ function clusterLevelByGaps(level, thresholdSq) {
     const contours = [];
     let currentContour = [];
     const numPoints = level.length;
-    
+
     for (let i = 0; i < numPoints; i++) {
         const p1 = level[i];
         const p2 = level[(i + 1) % numPoints];
-        
+
         if (p1.x !== 0 || p1.y !== 0) currentContour.push(p1);
-        
+
         const isMiss = (p2.x === 0 && p2.y === 0);
         let isGap = false;
         if ((p1.x !== 0 || p1.y !== 0) && (p2.x !== 0 || p2.y !== 0)) {
             isGap = p1.distanceToSquared(p2) > thresholdSq;
         }
-        
+
         if ((isMiss || isGap) && currentContour.length > 0) {
             if (currentContour.length > 2) contours.push(currentContour);
             currentContour = [];
@@ -388,7 +395,7 @@ function buildConnections(clusteredLevels) {
 
     for (let i = 0; i < clusteredLevels.length - 1; i++) {
         const currentContours = clusteredLevels[i];
-        const nextContours = clusteredLevels[i+1];
+        const nextContours = clusteredLevels[i + 1];
         if (nextContours.length === 0) continue;
 
         for (const contourA of currentContours) {
@@ -420,7 +427,7 @@ function stitchContours(vertices, indices, contourA, contourB, vertexIndex) {
     const numPointsA = contourA.length;
     const numPointsB = contourB.length;
     if (numPointsA < 2 || numPointsB < 2) return vertexIndex;
-    
+
     const indicesA = [];
     for (const p of contourA) {
         indicesA.push(vertexIndex++);
@@ -443,7 +450,7 @@ function stitchContours(vertices, indices, contourA, contourB, vertexIndex) {
 
     let i = 0, j = bestB_idx;
     let stepsA = 0, stepsB = 0;
-    
+
     while (stepsA < numPointsA || stepsB < numPointsB) {
         const pA1_idx = indicesA[i % numPointsA];
         const pA2_idx = indicesA[(i + 1) % numPointsA];
@@ -451,25 +458,25 @@ function stitchContours(vertices, indices, contourA, contourB, vertexIndex) {
         const pB2_idx = indicesB[(j + 1) % numPointsB];
 
         if (stepsA >= numPointsA) {
-             indices.push(indicesA[(i - 1 + numPointsA)%numPointsA], pB1_idx, pB2_idx);
-             j++; stepsB++; continue;
+            indices.push(indicesA[(i - 1 + numPointsA) % numPointsA], pB1_idx, pB2_idx);
+            j++; stepsB++; continue;
         }
         if (stepsB >= numPointsB) {
-             indices.push(pA1_idx, indicesB[(j - 1 + numPointsB)%numPointsB], pA2_idx);
-             i++; stepsA++; continue;
+            indices.push(pA1_idx, indicesB[(j - 1 + numPointsB) % numPointsB], pA2_idx);
+            i++; stepsA++; continue;
         }
 
-        const d1 = contourA[i%numPointsA].distanceToSquared(contourB[(j+1)%numPointsB]);
-        const d2 = contourA[(i+1)%numPointsA].distanceToSquared(contourB[j%numPointsB]);
+        const d1 = contourA[i % numPointsA].distanceToSquared(contourB[(j + 1) % numPointsB]);
+        const d2 = contourA[(i + 1) % numPointsA].distanceToSquared(contourB[j % numPointsB]);
 
         if (numPointsA - stepsA > numPointsB - stepsB) {
-             indices.push(pA1_idx, pB1_idx, pA2_idx); i++; stepsA++;
+            indices.push(pA1_idx, pB1_idx, pA2_idx); i++; stepsA++;
         } else if (numPointsB - stepsB > numPointsA - stepsA) {
-             indices.push(pA1_idx, pB1_idx, pB2_idx); j++; stepsB++;
+            indices.push(pA1_idx, pB1_idx, pB2_idx); j++; stepsB++;
         } else {
-             if (d1 < d2) { indices.push(pA1_idx, pB1_idx, pB2_idx); indices.push(pA1_idx, pB2_idx, pA2_idx); }
-             else { indices.push(pA1_idx, pB1_idx, pA2_idx); indices.push(pA2_idx, pB1_idx, pB2_idx); }
-             i++; j++; stepsA++; stepsB++;
+            if (d1 < d2) { indices.push(pA1_idx, pB1_idx, pB2_idx); indices.push(pA1_idx, pB2_idx, pA2_idx); }
+            else { indices.push(pA1_idx, pB1_idx, pA2_idx); indices.push(pA2_idx, pB1_idx, pB2_idx); }
+            i++; j++; stepsA++; stepsB++;
         }
     }
     return vertexIndex;
@@ -486,7 +493,7 @@ function initThreeJS() {
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    
+
     renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     renderer.setClearColor(0x1a202c, 1);
     camera.position.z = 40;
@@ -510,7 +517,7 @@ function initThreeJS() {
     });
     canvas.addEventListener('mouseup', () => { isDragging = false; });
     canvas.addEventListener('mouseleave', () => { isDragging = false; });
-    
+
     canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
         camera.position.z += e.deltaY * 0.02;
