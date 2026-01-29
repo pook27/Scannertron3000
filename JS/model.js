@@ -416,14 +416,13 @@ function buildConnections(clusteredLevels) {
             }
         }
     }
-    // Cap geometry if needed (omitted for brevity, assume open mesh is fine)
+
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     geometry.setIndex(indices);
     return geometry;
 }
 
 function stitchContours(vertices, indices, contourA, contourB, vertexIndex) {
-    // (Keep your existing stitching logic)
     const numPointsA = contourA.length;
     const numPointsB = contourB.length;
     if (numPointsA < 2 || numPointsB < 2) return vertexIndex;
@@ -440,7 +439,6 @@ function stitchContours(vertices, indices, contourA, contourB, vertexIndex) {
     }
 
     // Simplified connection logic
-    // (Paste your previous stitching function here or use this simple one)
     let bestB_idx = 0;
     let minStartDistSq = Infinity;
     for (let j = 0; j < numPointsB; j++) {
