@@ -277,13 +277,8 @@ function loadFavorites(uid) {
 
         // Iterate through favorites: scanId (Global ID) -> ownerUid
         for (const [globalScanId, ownerUid] of Object.entries(favorites)) {
-            
-            // 1. New Logic: ownerUid is a string
             if (typeof ownerUid === 'string') {
                 try {
-                    // PROBLEM SOLVER:
-                    // Instead of looking for `users/{owner}/scans/{globalScanId}` (which doesn't exist),
-                    // We SEARCH their list for any scan where firebaseId == globalScanId.
                     const ownerScansRef = ref(database, `users/${ownerUid}/scans`);
                     const q = query(ownerScansRef, orderByChild('firebaseId'), equalTo(globalScanId));
                     
@@ -300,7 +295,6 @@ function loadFavorites(uid) {
                         if (globalSnap.exists()) {
                             const item = globalSnap.val();
                             item.firebaseId = globalScanId;
-                            // Ensure display name exists
                             item.name = item.name || "Untitled (Global)"; 
                             favModels.push(item);
                         }

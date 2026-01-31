@@ -28,14 +28,11 @@ let viewMode = 'new';
 function setupModelPage(user) {
     const startScanButton = document.getElementById('startScanButton');
     const downloadModelButton = document.getElementById('downloadModelButton');
-
     initThreeJS();
-
     const urlParams = new URLSearchParams(window.location.search);
     const scanIdFromUrl = urlParams.get('scanId');
 
     if (scanIdFromUrl) {
-        // --- VIEW MODE ---
         viewMode = 'view';
         currentScanId = scanIdFromUrl;
 
@@ -47,7 +44,6 @@ function setupModelPage(user) {
         console.log('Loading existing scan:', scanIdFromUrl);
         loadExistingScan(scanIdFromUrl);
     } else {
-        // --- NEW SCAN MODE ---
         viewMode = 'new';
 
         if (startScanButton) {
@@ -58,7 +54,6 @@ function setupModelPage(user) {
             newStartBtn.addEventListener('click', async () => {
                 console.log('--- INITIATING SCAN ---');
                 try {
-                    // 1. Create Database Entries
                     const newScanRef = push(ref(database, 'scans'));
                     currentScanId = newScanRef.key;
 
@@ -120,14 +115,11 @@ function setupModelPage(user) {
 
     if (downloadModelButton) {
         downloadModelButton.addEventListener('click', () => {
-            // Assume 'scene' is your global Three.js scene object
-            // If 'scene' is not global, you must pass it into this function
             if (typeof scene === 'undefined') {
                 console.error("Three.js Scene not found. Make sure your 3D variable is accessible.");
                 alert("Error: No 3D model found to export.");
                 return;
             }
-
             const exporter = new OBJExporter();
             const result = exporter.parse(scene);
 
@@ -229,7 +221,6 @@ async function handleScanCompletion(user, scanId, startButton) {
         commandUnsubscribe();
         commandUnsubscribe = null;
     }
-    // Note: We KEEP scanDataUnsubscribe to show the final model
 
     startButton.disabled = false;
     startButton.classList.remove('btn-primary');

@@ -58,12 +58,11 @@ function setupFeedbackForm(user) {
     }
 }
 
-// --- NEW FUNCTION: Fetch Real Stats ---
+
 async function updateProjectStats() {
     try {
         // Fetch snapshot of users and scans to count them
         // Note: For massive databases, we would use a dedicated counter node,
-        // but for this project, checking the size directly is perfectly fine.
         const usersSnapshot = await get(ref(database, 'users'));
         const scansSnapshot = await get(ref(database, 'scans'));
 
