@@ -221,6 +221,7 @@ async function handleScanCompletion(user, scanId, startButton) {
         commandUnsubscribe();
         commandUnsubscribe = null;
     }
+    // Note: We KEEP scanDataUnsubscribe to show the final model
 
     startButton.disabled = false;
     startButton.classList.remove('btn-primary');
