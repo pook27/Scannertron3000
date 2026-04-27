@@ -36,13 +36,20 @@
             </button>
             <div class="collapse navbar-collapse" id="menuitem">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="index.html"><i class="fas fa-home me-1"></i>Home</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="model.html"><i class="fas fa-cube me-1"></i>Model</a></li>
-                    <li class="nav-item"><a class="nav-link" href="history.html"><i class="fas fa-history me-1"></i>History</a></li>
-                    <li class="nav-item"><a class="nav-link" href="profile.html"><i class="fas fa-user me-1"></i>Profile</a></li>
-                    <li class="nav-item"><a class="nav-link" href="gallery.html"><i class="fas fa-images me-1"></i>Gallery</a></li>
-                    <li class="nav-item"><a class="nav-link" href="about.html"><i class="fas fa-info-circle me-1"></i>About</a></li>
-                    <li class="nav-item"><a class="nav-link" href="login.html" id="login-btn"><i class="fas fa-sign-in-alt me-1"></i>Log Out</a></li>
+                    <li class="nav-item"><a class="nav-link" href="index.html"><i class="fas fa-home me-1"></i>Home</a>
+                    </li>
+                    <li class="nav-item"><a class="nav-link active" href="model.html"><i
+                                class="fas fa-cube me-1"></i>Model</a></li>
+                    <li class="nav-item"><a class="nav-link" href="history.html"><i
+                                class="fas fa-history me-1"></i>History</a></li>
+                    <li class="nav-item"><a class="nav-link" href="profile.html"><i
+                                class="fas fa-user me-1"></i>Profile</a></li>
+                    <li class="nav-item"><a class="nav-link" href="gallery.html"><i
+                                class="fas fa-images me-1"></i>Gallery</a></li>
+                    <li class="nav-item"><a class="nav-link" href="about.html"><i
+                                class="fas fa-info-circle me-1"></i>About</a></li>
+                    <li class="nav-item"><a class="nav-link" href="login.html" id="login-btn"><i
+                                class="fas fa-sign-in-alt me-1"></i>Log Out</a></li>
                 </ul>
             </div>
         </div>
@@ -62,11 +69,25 @@
             <!-- Sidebar column -->
             <div class="col-lg-3 col-12 mt-3 mt-lg-0 d-flex flex-column">
                 <div class="card shadow-sm p-3 flex-shrink-0">
-                    
+
                     <button id="startScanButton" class="btn btn-primary w-100 mb-3">
                         <i class="fas fa-play me-2"></i>Start Scan
                     </button>
-                    
+
+                    <div id="nameScanPopup" style="display:none;" class="mb-3 p-3 border rounded bg-light">
+                        <label for="scanNameInput" class="form-label fw-semibold small mb-1">
+                            <i class="fas fa-tag me-1"></i>Name your scan
+                        </label>
+                        <input type="text" id="scanNameInput" class="form-control form-control-sm mb-2"
+                            placeholder="e.g. Coffee Mug" maxlength="50" autofocus>
+                        <div class="d-flex gap-2">
+                            <button id="confirmScanBtn" class="btn btn-primary btn-sm flex-grow-1">
+                                <i class="fas fa-play me-1"></i>Start
+                            </button>
+                            <button id="cancelScanBtn" class="btn btn-outline-secondary btn-sm">Cancel</button>
+                        </div>
+                    </div>
+
                     <button id="downloadModelButton" class="btn btn-success w-100 mb-3">
                         <i class="fas fa-download me-2"></i>Download Model
                     </button>
@@ -86,4 +107,5 @@
     <script src="https://www.gstatic.com/firebasejs/12.5.0/firebase-auth-compat.js"></script>
     <script src="/js/firebase-config.js" type="module"></script>
 </body>
+
 </html>

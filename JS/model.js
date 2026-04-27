@@ -47,11 +47,35 @@ function setupModelPage(user) {
         viewMode = 'new';
 
         if (startScanButton) {
-            // Remove old listeners
             startScanButton.replaceWith(startScanButton.cloneNode(true));
             const newStartBtn = document.getElementById('startScanButton');
+            const popup = document.getElementById('nameScanPopup');
+            const confirmBtn = document.getElementById('confirmScanBtn');
+            const cancelBtn = document.getElementById('cancelScanBtn');
+            const nameInput = document.getElementById('scanNameInput');
 
-            newStartBtn.addEventListener('click', async () => {
+            // Step 1: Show the popup
+            newStartBtn.addEventListener('click', () => {
+                newStartBtn.style.display = 'none';
+                popup.style.display = 'block';
+                nameInput.focus();
+            });
+
+            // Step 2: Cancel — hide popup, restore button
+            cancelBtn.addEventListener('click', () => {
+                popup.style.display = 'none';
+                newStartBtn.style.display = 'block';
+                nameInput.value = '';
+            });
+
+            // Step 3: Confirm — run existing scan logic with the name
+            const doStartScan = async () => {
+                const scanName = nameInput.value.trim() ||
+                    `Scan ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+
+                popup.style.display = 'none';
+                nameInput.value = '';
+
                 console.log('--- INITIATING SCAN ---');
                 try {
                     const newScanRef = push(ref(database, 'scans'));
@@ -62,7 +86,7 @@ function setupModelPage(user) {
 
                     const initialMetadata = {
                         firebaseId: currentScanId,
-                        name: `Scan ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
+                        name: scanName,
                         date: new Date().toISOString(),
                         status: 'Scanning',
                         authorId: user.displayName || user.email,
@@ -86,21 +110,20 @@ function setupModelPage(user) {
                         timestamp: new Date().toISOString()
                     });
 
-                    // 2. UX Updates
-                    alert(`Scan started! ID: ${currentScanId}`);
                     newStartBtn.disabled = true;
+                    newStartBtn.style.display = 'block';
                     newStartBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning';
 
-                    // 3. AUTO-UPDATE URL (So refresh works)
-                    const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?scanId=' + currentScanId;
+                    const newUrl = window.location.protocol + "//" + window.location.host +
+                        window.location.pathname + '?scanId=' + currentScanId;
                     window.history.pushState({ path: newUrl }, '', newUrl);
 
-                    // 4. Start Listeners
                     startMonitoringScan(currentScanId, user, newStartBtn);
 
                 } catch (error) {
                     console.error("Error starting scan:", error);
-                    alert('Failed to start scan.');
+                    newStartBtn.style.display = 'block';
+                    popup.style.display = 'none';
 
                     if (currentScanId && currentUserScanKey) {
                         const updates = {};
@@ -109,6 +132,14 @@ function setupModelPage(user) {
                         update(ref(database), updates);
                     }
                 }
+            };
+
+            confirmBtn.addEventListener('click', doStartScan);
+
+            // Also allow pressing Enter in the input
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') doStartScan();
+                if (e.key === 'Escape') cancelBtn.click();
             });
         }
     }
@@ -281,10 +312,9 @@ function extractLevelsFromData(data) {
 }
 
 function updateModelMesh(data) {
-    const levels = extractLevelsFromData(data);
+    let levels = extractLevelsFromData(data);
     if (levels.length === 0) return;
 
-    // Standard reconstruction logic
     const gapThresholdSq = calculateGapThreshold(levels);
     const clusteredLevels = levels.map(level => clusterLevelByGaps(level, gapThresholdSq));
     const geometry = buildConnections(clusteredLevels);
@@ -301,6 +331,7 @@ function updateModelMesh(data) {
         roughness: 0.5,
         metalness: 0.1,
         side: THREE.DoubleSide,
+        flatShading: false,
     });
 
     currentMesh = new THREE.Mesh(geometry, material);
