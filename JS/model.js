@@ -141,7 +141,10 @@ function setupModelPage(user) {
 
             // Also allow pressing Enter in the input
             nameInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') doStartScan();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    doStartScan();
+                }
                 if (e.key === 'Escape') cancelBtn.click();
             });
         }
@@ -240,7 +243,7 @@ function startMonitoringScan(scanId, user, startButton) {
     commandUnsubscribe = onValue(commandRef, (snapshot) => {
         const cmd = snapshot.val();
         // Check if active flipped to false AND status is complete
-        if (cmd && cmd.active === false && cmd.status === 'complete') {
+        if (cmd && cmd.active === false && cmd.status === 'completed') {
             if (cmd.scanId === scanId) {
                 console.log("Scan finish detected.");
                 handleScanCompletion(user, scanId, startButton);
