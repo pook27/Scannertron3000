@@ -78,11 +78,14 @@ function setupModelPage(user) {
 
                 console.log('--- INITIATING SCAN ---');
                 try {
-                    const newScanRef = push(ref(database, 'scans'));
-                    currentScanId = newScanRef.key;
+                    // 1. Generate ONE single push ID
+                    const newScanKey = push(ref(database, 'scans')).key;
+                    currentScanId = newScanKey;
+                    currentUserScanKey = newScanKey;
 
-                    const userScanRef = push(ref(database, `users/${user.uid}/scans`));
-                    currentUserScanKey = userScanRef.key;
+                    // 2. Create specific references using that single ID
+                    const newScanRef = ref(database, `scans/${newScanKey}`);
+                    const userScanRef = ref(database, `users/${user.uid}/scans/${newScanKey}`);
 
                     const initialMetadata = {
                         firebaseId: currentScanId,
