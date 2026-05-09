@@ -295,7 +295,7 @@ function appendScanCard(scan) {
         <div class="col" data-scan-id="${scan.firebaseId}">
             <div class="card h-100 shadow-sm">
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${scan.firebaseId}">
-                    <img src="Images/sample_model.png" class="card-img-top" alt="${scan.name}" style="transition: opacity 0.3s;">
+                    <img src="Images/New Project.png" class="card-img-top" alt="${scan.name}" style="transition: opacity 0.3s;">
                     <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
                         <i class="fas fa-cube"></i> Hover 3D
                     </div>
