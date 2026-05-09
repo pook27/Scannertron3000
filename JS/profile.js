@@ -204,7 +204,7 @@ function renderProfileModels(models, containerId = '.row.row-cols-1.row-cols-sm-
         <div class="col" data-model-id="${model.firebaseId}">
             <div class="card h-100 shadow-sm">
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${model.firebaseId}">
-                    <img src="Images/New Project.png" class="card-img-top" alt="${displayName}">
+                    <img src="" class="card-img-top" alt="${displayName}">
                      <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
                         <i class="fas fa-cube"></i> Hover 3D
                     </div>
