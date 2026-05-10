@@ -297,7 +297,6 @@ function appendGalleryCard(item, isLiked) {
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${item.galleryId}">
                     <img src="" class="card-img-top gallery-view-trigger" data-id="${item.galleryId}" alt="${item.name}">
                     <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
-                        <i class="fas fa-cube"></i> Hover 3D
                     </div>
                 </div>
 
