@@ -24,6 +24,7 @@
   height: 300px;
   border-radius: var(--radius-xl);
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #1a202c 100%);
+  display: block;
 }
 
 /* Features Section */
@@ -83,6 +84,7 @@ video {
   border-radius: var(--radius-xl);
   background: linear-gradient(135deg, #1a202c 0%, #2d3748 50%, #1a202c 100%);
   cursor: grab;
+  display: block;
 }
 
 #demoCanvas:active {
