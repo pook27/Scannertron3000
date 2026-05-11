@@ -1,3 +1,7 @@
+html, body {
+  height: 100%;
+}
+
 /* Login page unique styles, leveraging global styles from styles.css */
 .login-wrapper {
   min-height: 100vh;
