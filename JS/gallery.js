@@ -295,7 +295,8 @@ function appendGalleryCard(item, isLiked) {
         <div class="col" data-gallery-id="${item.galleryId}">
             <div class="card h-100 shadow-sm">
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${item.galleryId}">
-                    <img src="" class="card-img-top gallery-view-trigger" data-id="${item.galleryId}" alt="${item.name}">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="card-img-top gallery-view-trigger" data-id="${item.galleryId}">
+                    <h6 style = "margin: 10px;">${item.name}</h6>
                     <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
                     </div>
                 </div>
@@ -359,6 +360,7 @@ function filterAndRenderGallery(items) {
         if (sortValue === 'newest') return new Date(b.timestamp) - new Date(a.timestamp);
         if (sortValue === 'oldest') return new Date(a.timestamp) - new Date(b.timestamp);
         if (sortValue === 'popular') return (b.likes || 0) - (a.likes || 0);
+        if (sortValue === 'views') return (b.views || 0) - (a.views || 0);
         return 0;
     });
 
@@ -376,8 +378,6 @@ function filterAndRenderGallery(items) {
             const id = thumb.getAttribute('data-id');
             thumb.addEventListener('mouseenter', () => {
                 thumbnailManager.activateThumbnail(thumb, id);
-                // Also count view on hover!
-                galleryManager.incrementViews(id);
             });
             thumb.addEventListener('mouseleave', () => thumbnailManager.deactivateThumbnail());
         });

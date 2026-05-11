@@ -1,4 +1,4 @@
-import { auth, update, database, ref, onValue, onAuthStateChanged, signOut, get, query, orderByChild, equalTo} from './firebase.js';
+import { auth, update, database, ref, onValue, onAuthStateChanged, signOut, get, query, orderByChild, equalTo } from './firebase.js';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.155.0/build/three.module.js';
 
 // ====================================================================
@@ -11,7 +11,7 @@ class ThumbnailManager {
         this.camera = null;
         this.animationId = null;
         this.currentContainer = null;
-        this.cache = {}; 
+        this.cache = {};
     }
 
     async activateThumbnail(container, scanId) {
@@ -32,7 +32,7 @@ class ThumbnailManager {
         this.renderer.domElement.style.top = '0';
         this.renderer.domElement.style.left = '0';
         this.renderer.domElement.style.zIndex = '10';
-        
+
         container.appendChild(this.renderer.domElement);
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -41,7 +41,7 @@ class ThumbnailManager {
         dirLight.position.set(10, 10, 10);
         this.scene.add(dirLight);
 
-        if(img) img.style.opacity = '0.3';
+        if (img) img.style.opacity = '0.3';
 
         try {
             let scanData = this.cache[scanId];
@@ -63,7 +63,7 @@ class ThumbnailManager {
             this.currentContainer.removeChild(this.renderer.domElement);
             this.renderer.dispose();
             const img = this.currentContainer.querySelector('img');
-            if(img) img.style.opacity = '1';
+            if (img) img.style.opacity = '1';
         }
         this.renderer = null;
         this.scene = null;
@@ -111,49 +111,49 @@ class ThumbnailManager {
     extractLevels(data) {
         let levels = [];
         if (typeof data === 'object' && data !== null) {
-            const sortedKeys = Object.keys(data).filter(k => !isNaN(parseInt(k))).sort((a,b)=>a-b);
+            const sortedKeys = Object.keys(data).filter(k => !isNaN(parseInt(k))).sort((a, b) => a - b);
             levels = sortedKeys.map(k => {
                 const ld = data[k];
-                if(Array.isArray(ld)) return ld.map(p=>new THREE.Vector3(p.x,p.y,p.z));
-                if(typeof ld==='object') return Object.values(ld).map(p=>new THREE.Vector3(p.x,p.y,p.z));
+                if (Array.isArray(ld)) return ld.map(p => new THREE.Vector3(p.x, p.y, p.z));
+                if (typeof ld === 'object') return Object.values(ld).map(p => new THREE.Vector3(p.x, p.y, p.z));
                 return [];
-            }).filter(l=>l.length>0);
+            }).filter(l => l.length > 0);
         }
         return levels;
     }
 
     calculateGapThreshold(levels) {
         if (!levels[0] || !levels[0].length) return 100;
-        const step = (2*Math.PI)/levels[0].length;
+        const step = (2 * Math.PI) / levels[0].length;
         let maxR = 0;
-        levels.slice(0,5).forEach(l => l.forEach(p => { const r=Math.sqrt(p.x*p.x+p.y*p.y); if(r>maxR)maxR=r; }));
-        return Math.pow(maxR*step*100, 2);
+        levels.slice(0, 5).forEach(l => l.forEach(p => { const r = Math.sqrt(p.x * p.x + p.y * p.y); if (r > maxR) maxR = r; }));
+        return Math.pow(maxR * step * 100, 2);
     }
 
     clusterLevelByGaps(level, thresh) {
         const contours = []; let cur = [];
-        for(let i=0; i<level.length; i++) {
-            const p1=level[i], p2=level[(i+1)%level.length];
-            if(p1.x||p1.y) cur.push(p1);
-            if((p1.distanceToSquared(p2)>thresh || (!p2.x&&!p2.y)) && cur.length) {
-                if(cur.length>2) contours.push(cur); cur=[];
+        for (let i = 0; i < level.length; i++) {
+            const p1 = level[i], p2 = level[(i + 1) % level.length];
+            if (p1.x || p1.y) cur.push(p1);
+            if ((p1.distanceToSquared(p2) > thresh || (!p2.x && !p2.y)) && cur.length) {
+                if (cur.length > 2) contours.push(cur); cur = [];
             }
         }
-        if(cur.length>2) contours.push(cur);
+        if (cur.length > 2) contours.push(cur);
         return contours;
     }
 
-    getCentroid(c) { let x=0,y=0; c.forEach(p=>{x+=p.x;y+=p.y}); return new THREE.Vector2(x/c.length,y/c.length); }
+    getCentroid(c) { let x = 0, y = 0; c.forEach(p => { x += p.x; y += p.y }); return new THREE.Vector2(x / c.length, y / c.length); }
 
     buildConnections(clustered) {
-        const geo = new THREE.BufferGeometry(); const verts=[]; const inds=[]; let vIdx=0;
-        for(let i=0; i<clustered.length-1; i++) {
-            const cur=clustered[i], nxt=clustered[i+1];
+        const geo = new THREE.BufferGeometry(); const verts = []; const inds = []; let vIdx = 0;
+        for (let i = 0; i < clustered.length - 1; i++) {
+            const cur = clustered[i], nxt = clustered[i + 1];
             cur.forEach(cA => {
                 const centA = this.getCentroid(cA);
-                let bestB=null, minD=Infinity;
-                nxt.forEach(cB => { const d=centA.distanceToSquared(this.getCentroid(cB)); if(d<minD){minD=d; bestB=cB;} });
-                if(bestB) vIdx = this.stitch(verts, inds, cA, bestB, vIdx);
+                let bestB = null, minD = Infinity;
+                nxt.forEach(cB => { const d = centA.distanceToSquared(this.getCentroid(cB)); if (d < minD) { minD = d; bestB = cB; } });
+                if (bestB) vIdx = this.stitch(verts, inds, cA, bestB, vIdx);
             });
         }
         geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
@@ -162,21 +162,21 @@ class ThumbnailManager {
     }
 
     stitch(verts, inds, cA, cB, vIdx) {
-        const nA=cA.length, nB=cB.length;
-        const iA=[]; cA.forEach(p=>{iA.push(vIdx++); verts.push(p.x,p.y,p.z)});
-        const iB=[]; cB.forEach(p=>{iB.push(vIdx++); verts.push(p.x,p.y,p.z)});
-        
-        let bestJ=0, minD=Infinity;
-        cB.forEach((p,j)=>{ const d=cA[0].distanceToSquared(p); if(d<minD){minD=d; bestJ=j} });
-        
-        let i=0, j=bestJ, sA=0, sB=0;
-        while(sA<nA || sB<nB) {
-            const idxA=iA[i%nA], idxA2=iA[(i+1)%nA];
-            const idxB=iB[j%nB], idxB2=iB[(j+1)%nB];
-            if(sA>=nA) { inds.push(idxA,idxB,idxB2); j++; sB++; continue; }
-            if(sB>=nB) { inds.push(idxA,idxB,idxA2); i++; sA++; continue; }
-            if(nA-sA > nB-sB) { inds.push(idxA,idxB,idxA2); i++; sA++; }
-            else { inds.push(idxA,idxB,idxB2); j++; sB++; }
+        const nA = cA.length, nB = cB.length;
+        const iA = []; cA.forEach(p => { iA.push(vIdx++); verts.push(p.x, p.y, p.z) });
+        const iB = []; cB.forEach(p => { iB.push(vIdx++); verts.push(p.x, p.y, p.z) });
+
+        let bestJ = 0, minD = Infinity;
+        cB.forEach((p, j) => { const d = cA[0].distanceToSquared(p); if (d < minD) { minD = d; bestJ = j } });
+
+        let i = 0, j = bestJ, sA = 0, sB = 0;
+        while (sA < nA || sB < nB) {
+            const idxA = iA[i % nA], idxA2 = iA[(i + 1) % nA];
+            const idxB = iB[j % nB], idxB2 = iB[(j + 1) % nB];
+            if (sA >= nA) { inds.push(idxA, idxB, idxB2); j++; sB++; continue; }
+            if (sB >= nB) { inds.push(idxA, idxB, idxA2); i++; sA++; continue; }
+            if (nA - sA > nB - sB) { inds.push(idxA, idxB, idxA2); i++; sA++; }
+            else { inds.push(idxA, idxB, idxB2); j++; sB++; }
         }
         return vIdx;
     }
@@ -198,14 +198,15 @@ function renderProfileModels(models, containerId = '.row.row-cols-1.row-cols-sm-
         const dateRaw = model.date || model.timestamp || model.createdAt;
         const dateObj = dateRaw ? new Date(dateRaw) : new Date();
         const displayDate = isNaN(dateObj.getTime()) ? 'Unknown Date' : dateObj.toLocaleDateString();
-        const displayName = model.name || `Scan ${model.firebaseId ? model.firebaseId.substring(0,5) : 'Unknown'}`;
+        const displayName = model.name || `Scan ${model.firebaseId ? model.firebaseId.substring(0, 5) : 'Unknown'}`;
 
         return `
         <div class="col" data-model-id="${model.firebaseId}">
             <div class="card h-100 shadow-sm">
                 <div class="ratio ratio-4x3 thumbnail-container" style="position: relative; cursor: pointer;" data-id="${model.firebaseId}">
-                    <img src="" class="card-img-top" alt="${displayName}">
-                     <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
+                    <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" class="card-img-top">
+                    <h6 style = "margin: 10px;">${displayName}</h6>
+                    <div class="hover-hint" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; pointer-events: none;">
                     </div>
                 </div>
                 <div class="card-body">
@@ -257,7 +258,7 @@ function loadProfileData(user) {
                 models.push(scan);
             }
         }
-        renderProfileModels(models.sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,4)); // My Recent Models
+        renderProfileModels(models.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 4)); // My Recent Models
     });
 
     // 4. Fetch Favorites
@@ -270,7 +271,7 @@ function loadFavorites(uid) {
     onValue(favRef, async (snapshot) => {
         const favorites = snapshot.val() || {};
         const favModels = [];
-        
+
         const container = document.getElementById('favorites-container');
         if (!container) return;
 
@@ -280,12 +281,12 @@ function loadFavorites(uid) {
                 try {
                     const ownerScansRef = ref(database, `users/${ownerUid}/scans`);
                     const q = query(ownerScansRef, orderByChild('firebaseId'), equalTo(globalScanId));
-                    
+
                     const querySnap = await get(q);
 
                     if (querySnap.exists()) {
                         // We found the match! (Even though the keys are different)
-                        const matchData = Object.values(querySnap.val())[0]; 
+                        const matchData = Object.values(querySnap.val())[0];
                         favModels.push(matchData);
                     } else {
                         // Fallback: If not in user list, try global 'scans' node
@@ -294,14 +295,14 @@ function loadFavorites(uid) {
                         if (globalSnap.exists()) {
                             const item = globalSnap.val();
                             item.firebaseId = globalScanId;
-                            item.name = item.name || "Untitled (Global)"; 
+                            item.name = item.name || "Untitled (Global)";
                             favModels.push(item);
                         }
                     }
                 } catch (e) {
                     console.error("Error fetching favorite:", e);
                 }
-            } 
+            }
         }
         renderProfileModels(favModels, '#favorites-container');
     });
@@ -312,14 +313,14 @@ async function calculateTotalStats(userId) {
         const scansSnapshot = await get(ref(database, `users/${userId}/scans`));
         const scans = scansSnapshot.val() || {};
         let totalLikes = 0, totalViews = 0;
-        
+
         const scanIds = Object.keys(scans);
-        for(const id of scanIds) {
-             const s = await get(ref(database, `scans/${id}`));
-             if(s.exists()) {
-                 totalLikes += s.val().likes || 0;
-                 totalViews += s.val().views || 0;
-             }
+        for (const id of scanIds) {
+            const s = await get(ref(database, `scans/${id}`));
+            if (s.exists()) {
+                totalLikes += s.val().likes || 0;
+                totalViews += s.val().views || 0;
+            }
         }
 
         const statNumbers = document.querySelectorAll('.stat-number');
