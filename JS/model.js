@@ -291,7 +291,7 @@ async function handleScanCompletion(user, scanId, startButton) {
 //                       MESH GENERATION (Standard)
 // ============================================================================
 
-function extractLevelsFromData(data) {
+function extractLevels(data) {
     let levels = [];
 
     if (typeof data === 'object' && data !== null) {
@@ -318,7 +318,7 @@ function extractLevelsFromData(data) {
 }
 
 function updateModelMesh(data) {
-    let levels = extractLevelsFromData(data);
+    let levels = extractLevels(data);
     if (levels.length === 0) return;
 
     const gapThresholdSq = calculateGapThreshold(levels);
